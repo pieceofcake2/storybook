@@ -11,9 +11,10 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 - Render endpoint `POST /_storybook/render/{storyId}`, which renders an Element under the allowed
   directories (`Storybook.elements`, `components` by default) or a story template
-  (`Storybook.templates`, `Stories` by default) with the args as variables. It is disabled unless
-  `Storybook.enabled` is true, does not use the components of `AppController` (Security, Session),
-  and uses its View class and helpers.
+  (`Storybook.templates`, `Stories` by default) with the args as variables. It is connected when
+  the plugin is loaded with its routes, does not use the components of `AppController` (Security,
+  Session), and uses its View class and helpers. The plugin is for development only: install it
+  as a dev dependency (`composer require --dev`), never in production.
 - Error responses whose first line is `<!-- message -->`, with a 4xx or 5xx status. PHP warnings
   fail the rendering (`Storybook.errorsAsExceptions`).
 - Storybook framework `@pieceofcake2/storybook` (Storybook 10, Vite builder), installed from the

@@ -6,6 +6,11 @@ pieceofcake2/storybook renders the Elements of a CakePHP 2 application in
 It consists of a CakePHP plugin, which provides the render endpoint, and a Storybook framework
 (`@pieceofcake2/storybook`, Vite builder), which is included in the Composer package.
 
+> [!IMPORTANT]
+> This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
+> and never install it in production: wherever the plugin is installed and loaded with its routes,
+> the render endpoint is available. See [Keeping Storybook out of Production](#production).
+
 - [How It Works](#how-it-works)
 - [Requirements](#requirements)
 - [Installation](#installation)
@@ -14,7 +19,7 @@ It consists of a CakePHP plugin, which provides the render endpoint, and a Story
 - [Running Storybook Locally](#running-storybook-locally)
 - [The Vite Config of the Application](#vite-config)
 - [Static Build and Deployment](#static-build)
-- [Disabling Storybook in Production](#production)
+- [Keeping Storybook out of Production](#production)
 - [Security](#security)
 - [Testing Stories](#testing-stories)
 - [Differences from Storybook for Symfony](#differences)
@@ -67,10 +72,10 @@ application, and sends the requests to `/_storybook/render` of its origin.
 
 ## Installation
 
-1. **Install the plugin** with [Composer](https://getcomposer.org/):
+1. **Install the plugin as a dev dependency** with [Composer](https://getcomposer.org/):
 
    ```bash
-   composer require pieceofcake2/storybook
+   composer require --dev pieceofcake2/storybook
    ```
 
    The plugin has the `cakephp-plugin` type, so it is installed into your plugins directory by
@@ -81,20 +86,13 @@ application, and sends the requests to `/_storybook/render` of its origin.
    | Modern (`config/`, `src/`, `templates/`, `plugins/`) | `"plugins/{$name}/": ["type:cakephp-plugin"]` | `plugins/Storybook/` |
    | Legacy (`app/Config/`, `app/Plugin/`) | `"app/Plugin/{$name}/": ["type:cakephp-plugin"]` | `app/Plugin/Storybook/` |
 
-   Install it as a regular dependency (not `--dev`) if you deploy the static build to an
-   environment built with `composer install --no-dev`; it stays disabled unless you enable it
-   (see [Disabling Storybook in Production](#production)).
+   Do not install it as a regular dependency: production is deployed with
+   `composer install --no-dev`, so that the plugin is not installed there. To publish a static
+   build to a development environment deployed with `--no-dev`, add the package in the build step
+   of that environment only (see [Static Build and Deployment](#static-build)).
 
 2. **Load the plugin with its routes** in `config/bootstrap.php` (legacy layout:
-   `app/Config/bootstrap.php`):
-
-   ```php
-   CakePlugin::load('Storybook', ['routes' => true]);
-   ```
-
-   With `CakePlugin::loadAll()`, pass the option for the plugin:
-   `CakePlugin::loadAll(['Storybook' => ['routes' => true]]);`. If the plugin is a dev
-   dependency, load it only when it is installed:
+   `app/Config/bootstrap.php`), only when it is installed:
 
    ```php
    try {
@@ -103,6 +101,15 @@ application, and sends the requests to `/_storybook/render` of its origin.
        // Not installed (composer install --no-dev)
    }
    ```
+
+   With `CakePlugin::loadAll()`, pass the option for the plugin:
+   `CakePlugin::loadAll(['Storybook' => ['routes' => true]]);`. `loadAll()` loads only the
+   plugins found in the plugins directories, so it does not fail when the plugin is not
+   installed. It reads the list of plugins from the `_cake_core_` cache when it exists: clear the
+   cache when you deploy (as after any change of the plugins).
+
+   Loading the plugin with `'routes' => true` connects the render route
+   (`/_storybook/render/:story`). There is no other switch.
 
    Your `config/routes.php` must call `CakePlugin::routes()` (as the default one does).
 
@@ -132,6 +139,9 @@ application, and sends the requests to `/_storybook/render` of its origin.
    If your npm configuration sets `ignore-scripts=true`, Storybook works without the install
    scripts.
 
+   `npm ci` also works where the plugin is not installed (e.g. in the build of production): npm
+   links the `file:` dependency, and the link is only used by Storybook.
+
 <a id="configuration"></a>
 
 ## Configuration
@@ -143,8 +153,6 @@ All settings are written in `config/bootstrap.php` (before loading the plugin), 
 
 ```php
 Configure::write('Storybook', [
-    // Enables the render endpoint. Disabled by default: enable it only where Storybook is used
-    'enabled' => filter_var(env('STORYBOOK_ENABLED'), FILTER_VALIDATE_BOOLEAN),
     // Element directories that stories can render (Elements/components/ by default)
     'elements' => ['components'],
     // Directory of the story templates under the view path (templates/Stories/), or false
@@ -158,9 +166,6 @@ Configure::write('Storybook', [
     'errorsAsExceptions' => true,
 ]);
 ```
-
-`Storybook.enabled` is read when the routes are loaded: when it is false, the route
-`/_storybook/render/:story` is not connected, and the controller also returns 404.
 
 The controller extends `Controller`, not `AppController`: the components of your application
 (Security, Session, Auth, ...) and the callbacks of `AppController` (e.g. `beforeFilter()`) are
@@ -381,11 +386,11 @@ in the canvas. The error page is HTML whose first line is a comment with the mes
 
 ## Running Storybook Locally
 
-Run the application with the render endpoint enabled, and `storybook dev`:
+Run the application (with the dev dependencies installed), and `storybook dev`:
 
 ```bash
 # Terminal 1: the CakePHP application
-STORYBOOK_ENABLED=true php -d opcache.revalidate_freq=0 -S localhost:8765 -t webroot webroot/index.php
+php -d opcache.revalidate_freq=0 -S localhost:8765 -t webroot webroot/index.php
 
 # Terminal 2: Storybook
 npx storybook dev -p 6006
@@ -444,47 +449,54 @@ options.
 origin as the application, under any path (e.g. https://dev.example.com/storybook/): it sends the
 render requests to `/_storybook/render` of its origin (not of its own path), and the HTML of the
 Elements refers to the images and assets of the application on the same origin. The application
-of that environment must have `Storybook.enabled` set to true.
+of that environment must have the plugin installed and loaded.
 
-For example, to publish Storybook only in the development environment:
+For example, to publish Storybook only in the development environment, deployed with
+`composer install --no-dev` like production:
 
-1. Enable the endpoint with an environment variable that is set only in the development environment:
-
-   ```php
-   // config/bootstrap.php
-   Configure::write('Storybook.enabled', filter_var(env('STORYBOOK_ENABLED'), FILTER_VALIDATE_BOOLEAN));
-   ```
+1. In the build step of the development environment only, add this package after
+   `composer install`, at the version of `composer.lock`:
 
    ```bash
-   # Development environment only
-   STORYBOOK_ENABLED=true
+   composer install --no-dev --no-interaction
+   composer require "pieceofcake2/storybook:$(jq -r '.["packages-dev"][] | select(.name == "pieceofcake2/storybook") | .version' composer.lock)" \
+       --update-no-dev --no-interaction
    ```
+
+   `composer require` moves the package to `require` in the `composer.json` and `composer.lock` of
+   the build (do not commit them), and installs it with its dependencies (e.g.
+   `composer/installers`) at their locked versions. The other packages keep their locked
+   versions, and the other dev dependencies are not installed. It regenerates the autoloader: pass
+   the same options as to `composer install` (e.g. `--optimize-autoloader` or
+   `--classmap-authoritative`).
+
+   The application loads the plugin when it is installed (see [Installation](#installation)), so
+   the same `config/bootstrap.php` is used in production and in the development environment.
 
 2. Build Storybook in the deployment of the development environment, and serve it under
    `/storybook/`: write it into the webroot (`npx storybook build -o webroot/storybook`, and add
    `webroot/storybook/` to `.gitignore`), or upload it to the storage or CDN that serves the static
    files of the site, on the same host.
 
-3. Do not build or deploy it in production (see below).
+3. Do not add the package, or build or deploy Storybook, in production (see below).
 
 If the development environment uses Basic authentication, the browser sends the credentials with
 the render requests, as they are on the same origin.
 
 <a id="production"></a>
 
-## Disabling Storybook in Production
+## Keeping Storybook out of Production
 
 The render endpoint renders any Element of the allowed directories with arbitrary args, which is
-not meant for production. It is disabled by default, and stays disabled unless `Storybook.enabled`
-is true:
+not meant for production. The plugin has no switch to disable it: it is a dev dependency, which is
+not installed in production.
 
-- Do not set `STORYBOOK_ENABLED` (or set it to `false`) in production. Check that
-  `POST /_storybook/render/x` returns 404 there.
+- Install the plugin with `composer require --dev`, and deploy production with
+  `composer install --no-dev`. Do not add the package in the build of production (see
+  [Static Build and Deployment](#static-build)). Check that `POST /_storybook/render/x` returns 404
+  there.
 - Do not deploy the static build to production, or exclude it from the files deployed to
   production (e.g. `webroot/storybook/`).
-- Optionally, install the plugin as a dev dependency and load it only when it is installed (see
-  [Installation](#installation)), so that the code is not deployed at all with
-  `composer install --no-dev`.
 
 <a id="security"></a>
 
@@ -497,11 +509,12 @@ is true:
   extension. Elements must be under the allowed directories (`Storybook.elements`), and templates
   under the templates directory (`Storybook.templates`, which can be disabled with false).
 - The args must be a JSON object whose keys are valid PHP variable names (not `this`).
-- The endpoint is disabled by default (no route, 404), accepts only POST requests, and returns
+- The endpoint exists only where the plugin is installed (a dev dependency, not installed in
+  production), accepts only POST requests, and returns
   `Cache-Control: no-store` and `X-Robots-Tag: noindex`. The messages and traces of server errors
   are shown only in debug mode.
 - The endpoint does not use the Security component (CSRF) or the session, since the requests come
-  from Storybook without a form. Do not enable it where the Elements could expose data to
+  from Storybook without a form. Do not install it where the Elements could expose data to
   unauthorized users: Elements are rendered with the args of the request, and with whatever the
   helpers and the Elements read by themselves (configuration, database, ...).
 
@@ -548,7 +561,7 @@ every story of the static build served by the application (`tests/test_app/bin/e
 | Builders | Webpack and Vite | Vite |
 | Args processors, component mocks, Live Components | Supported | Not supported |
 | Watching templates | `additionalWatchPaths` | `watchPaths` |
-| Production | Disabled in the `prod` environment | Disabled unless `Storybook.enabled` is true |
+| Production | Disabled in the `prod` environment | Not installed (dev dependency, `composer install --no-dev`) |
 | Static build | Behind a reverse proxy to the application | On the same origin as the application |
 | npm package | `file:` dependency on the bundle | `file:` dependency on the plugin |
 

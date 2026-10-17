@@ -5,6 +5,11 @@ pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [
 描画するのと同じ仕組みです。描画のエンドポイントを提供する CakePHP プラグインと、Composer パッケージに
 含まれる Storybook のフレームワーク (`@pieceofcake2/storybook`、Vite ビルダー) からなります。
 
+> [!IMPORTANT]
+> このプラグインは開発専用です。dev の依存としてインストールし (`composer require --dev`)、本番には
+> インストールしないでください。プラグインをインストールしてルートとあわせて読み込んだ環境では、描画の
+> エンドポイントが使えます。[本番に入れない](#production) を参照してください。
+
 - [仕組み](#how-it-works)
 - [要件](#requirements)
 - [インストール](#installation)
@@ -13,7 +18,7 @@ pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [
 - [ローカルでの起動](#running-storybook-locally)
 - [アプリケーションの Vite の設定](#vite-config)
 - [静的ビルドと公開](#static-build)
-- [本番で無効にする](#production)
+- [本番に入れない](#production)
 - [セキュリティ](#security)
 - [ストーリーのテスト](#testing-stories)
 - [Storybook for Symfony との違い](#differences)
@@ -65,10 +70,10 @@ Content-Type: application/json
 
 ## インストール
 
-1. [Composer](https://getcomposer.org/) で**プラグインをインストール**します。
+1. [Composer](https://getcomposer.org/) で**プラグインを dev の依存としてインストール**します。
 
    ```bash
-   composer require pieceofcake2/storybook
+   composer require --dev pieceofcake2/storybook
    ```
 
    このプラグインは `cakephp-plugin` タイプなので、`composer/installers` によってプラグインディレクトリに
@@ -79,19 +84,12 @@ Content-Type: application/json
    | モダン (`config/`, `src/`, `templates/`, `plugins/`) | `"plugins/{$name}/": ["type:cakephp-plugin"]` | `plugins/Storybook/` |
    | レガシー (`app/Config/`, `app/Plugin/`) | `"app/Plugin/{$name}/": ["type:cakephp-plugin"]` | `app/Plugin/Storybook/` |
 
-   `composer install --no-dev` で作る環境に静的ビルドを公開する場合は、(`--dev` ではなく) 通常の依存として
-   インストールします。有効にしない限り無効のままです ([本番で無効にする](#production) を参照)。
+   通常の依存にはしないでください。本番は `composer install --no-dev` でデプロイし、プラグインを
+   インストールしません。`--no-dev` でデプロイする開発環境に静的ビルドを公開するときは、その環境のビルドで
+   だけパッケージを追加します ([静的ビルドと公開](#static-build) を参照)。
 
-2. `config/bootstrap.php` (レガシーレイアウトでは `app/Config/bootstrap.php`) で、**ルートとあわせて
-   プラグインを読み込みます**。
-
-   ```php
-   CakePlugin::load('Storybook', ['routes' => true]);
-   ```
-
-   `CakePlugin::loadAll()` を使っている場合は、プラグインのオプションを渡します:
-   `CakePlugin::loadAll(['Storybook' => ['routes' => true]]);`。dev の依存にした場合は、インストール
-   されているときだけ読み込みます。
+2. `config/bootstrap.php` (レガシーレイアウトでは `app/Config/bootstrap.php`) で、インストールされている
+   ときだけ**ルートとあわせてプラグインを読み込みます**。
 
    ```php
    try {
@@ -100,6 +98,15 @@ Content-Type: application/json
        // インストールされていない (composer install --no-dev)
    }
    ```
+
+   `CakePlugin::loadAll()` を使っている場合は、プラグインのオプションを渡します:
+   `CakePlugin::loadAll(['Storybook' => ['routes' => true]]);`。`loadAll()` はプラグインディレクトリにある
+   プラグインだけを読み込むので、インストールされていなくても失敗しません。プラグインの一覧は
+   `_cake_core_` のキャッシュがあればそこから読むため、デプロイのときは (プラグインを変えたときと同じく)
+   キャッシュを消してください。
+
+   `'routes' => true` で読み込むと、描画のルート (`/_storybook/render/:story`) が追加されます。ほかに
+   切り替えはありません。
 
    `config/routes.php` で (既定のものと同じく) `CakePlugin::routes()` を呼んでいる必要があります。
 
@@ -128,6 +135,9 @@ Content-Type: application/json
 
    npm の設定で `ignore-scripts=true` にしていても、Storybook は install スクリプトなしで動きます。
 
+   プラグインをインストールしていない環境 (本番のビルドなど) でも `npm ci` は成功します。npm は `file:` の
+   依存をリンクにし、そのリンクを使うのは Storybook だけです。
+
 <a id="configuration"></a>
 
 ## 設定
@@ -138,8 +148,6 @@ Content-Type: application/json
 
 ```php
 Configure::write('Storybook', [
-    // 描画のエンドポイントを有効にする。既定は無効。Storybook を使う環境でだけ有効にする
-    'enabled' => filter_var(env('STORYBOOK_ENABLED'), FILTER_VALIDATE_BOOLEAN),
     // ストーリーで描画できる Element のディレクトリ (既定は Elements/components/)
     'elements' => ['components'],
     // ストーリー用のテンプレートのディレクトリ (ビューのパスの下の templates/Stories/)。false で無効
@@ -153,9 +161,6 @@ Configure::write('Storybook', [
     'errorsAsExceptions' => true,
 ]);
 ```
-
-`Storybook.enabled` はルートを読み込むときに読まれます。false のときは `/_storybook/render/:story` のルートを
-追加せず、コントローラーも 404 を返します。
 
 コントローラーは `AppController` ではなく `Controller` を継承します。描画の依頼では、アプリケーションの
 コンポーネント (Security、Session、Auth など) や `AppController` のコールバック (`beforeFilter()` など) を
@@ -375,11 +380,11 @@ HTML で、次のステータスで返ります。
 
 ## ローカルでの起動
 
-描画のエンドポイントを有効にしてアプリケーションを起動し、`storybook dev` を実行します。
+(dev の依存をインストールした) アプリケーションを起動し、`storybook dev` を実行します。
 
 ```bash
 # ターミナル 1: CakePHP のアプリケーション
-STORYBOOK_ENABLED=true php -d opcache.revalidate_freq=0 -S localhost:8765 -t webroot webroot/index.php
+php -d opcache.revalidate_freq=0 -S localhost:8765 -t webroot webroot/index.php
 
 # ターミナル 2: Storybook
 npx storybook dev -p 6006
@@ -435,42 +440,48 @@ Storybook 用に別の設定ファイルを使うときは、フレームワー�
 `storybook build` は静的な Storybook を書き出します (既定は `storybook-static/`)。これをアプリケーションと
 同じオリジンの任意のパス (https://dev.example.com/storybook/ など) に置きます。静的ビルドは (自身のパスでは
 なく) オリジンの `/_storybook/render` に描画の依頼を送り、Element の HTML は同じオリジンのアプリケーションの
-画像やアセットを参照します。その環境のアプリケーションでは `Storybook.enabled` を true にします。
+画像やアセットを参照します。その環境のアプリケーションには、プラグインをインストールして読み込んでおきます。
 
-たとえば、開発環境でだけ Storybook を公開するには、次のようにします。
+たとえば、本番と同じく `composer install --no-dev` でデプロイする開発環境でだけ Storybook を公開するには、
+次のようにします。
 
-1. 開発環境でだけ設定する環境変数で、エンドポイントを有効にします。
-
-   ```php
-   // config/bootstrap.php
-   Configure::write('Storybook.enabled', filter_var(env('STORYBOOK_ENABLED'), FILTER_VALIDATE_BOOLEAN));
-   ```
+1. 開発環境のビルドでだけ、`composer install` の後にこのパッケージを `composer.lock` のバージョンで
+   追加します。
 
    ```bash
-   # 開発環境だけ
-   STORYBOOK_ENABLED=true
+   composer install --no-dev --no-interaction
+   composer require "pieceofcake2/storybook:$(jq -r '.["packages-dev"][] | select(.name == "pieceofcake2/storybook") | .version' composer.lock)" \
+       --update-no-dev --no-interaction
    ```
+
+   `composer require` は、ビルドの `composer.json` と `composer.lock` でパッケージを `require` に移し
+   (これらはコミットしません)、依存 (`composer/installers` など) とあわせて lock のバージョンで
+   インストールします。ほかのパッケージは lock のバージョンのままで、ほかの dev の依存はインストール
+   されません。オートローダーを作り直すので、`composer install` と同じオプション
+   (`--optimize-autoloader`、`--classmap-authoritative` など) を渡してください。
+
+   アプリケーションはインストールされているときだけプラグインを読み込むので ([インストール](#installation)
+   を参照)、本番と開発環境で同じ `config/bootstrap.php` を使えます。
 
 2. 開発環境へのデプロイで Storybook をビルドし、`/storybook/` で配信します。webroot に書き出す
    (`npx storybook build -o webroot/storybook`。`webroot/storybook/` は `.gitignore` に足す) か、同じホストで
    サイトの静的ファイルを配信しているストレージや CDN にアップロードします。
 
-3. 本番ではビルドもデプロイもしません (次の節を参照)。
+3. 本番では、パッケージの追加も Storybook のビルドとデプロイもしません (次の節を参照)。
 
 開発環境に Basic 認証がある場合も、描画の依頼は同じオリジンなので、ブラウザーが認証情報を送ります。
 
 <a id="production"></a>
 
-## 本番で無効にする
+## 本番に入れない
 
 描画のエンドポイントは、許可したディレクトリの Element を任意の args で描画するもので、本番向けでは
-ありません。既定で無効で、`Storybook.enabled` が true でない限り無効のままです。
+ありません。プラグインには無効にする切り替えはなく、dev の依存として本番にはインストールしません。
 
-- 本番では `STORYBOOK_ENABLED` を設定しない (または `false` にする)。本番で `POST /_storybook/render/x` が
-  404 になることを確かめてください。
+- プラグインは `composer require --dev` でインストールし、本番は `composer install --no-dev` で
+  デプロイする。本番のビルドではパッケージを追加しない ([静的ビルドと公開](#static-build) を参照)。
+  本番で `POST /_storybook/render/x` が 404 になることを確かめてください。
 - 静的ビルドを本番にデプロイしない。または本番にデプロイするファイルから外す (`webroot/storybook/` など)。
-- 必要なら、プラグインを dev の依存にし、インストールされているときだけ読み込みます ([インストール](#installation)
-  を参照)。`composer install --no-dev` ではコード自体がデプロイされません。
 
 <a id="security"></a>
 
@@ -483,10 +494,10 @@ Storybook 用に別の設定ファイルを使うときは、フレームワー�
   許可したディレクトリ (`Storybook.elements`) の下、テンプレートはテンプレートのディレクトリ
   (`Storybook.templates`。false で無効にできる) の下に限ります。
 - args は、キーが PHP の変数名として正しい (`this` でない) JSON のオブジェクトである必要があります。
-- エンドポイントは既定で無効 (ルートなし、404) で、POST だけを受け付け、`Cache-Control: no-store` と
-  `X-Robots-Tag: noindex` を返します。サーバーのエラーのメッセージとトレースは debug モードでだけ表示します。
+- エンドポイントはプラグインをインストールした環境にだけあり (dev の依存なので本番にはない)、POST だけを
+  受け付け、`Cache-Control: no-store` と `X-Robots-Tag: noindex` を返します。サーバーのエラーのメッセージとトレースは debug モードでだけ表示します。
 - 依頼はフォームを使わずに Storybook から来るため、エンドポイントは Security コンポーネント (CSRF) と
-  セッションを使いません。Element が権限のない人にデータを見せてしまう環境では有効にしないでください。
+  セッションを使いません。Element が権限のない人にデータを見せてしまう環境にはインストールしないでください。
   Element は依頼の args と、ヘルパーや Element が自分で読むもの (設定、データベースなど) で描画されます。
 
 <a id="testing-stories"></a>
@@ -533,7 +544,7 @@ export default defineConfig({
 | ビルダー | Webpack と Vite | Vite |
 | args processor、コンポーネントのモック、Live Components | 対応 | 未対応 |
 | テンプレートの監視 | `additionalWatchPaths` | `watchPaths` |
-| 本番 | `prod` 環境で無効 | `Storybook.enabled` が true でない限り無効 |
+| 本番 | `prod` 環境で無効 | インストールしない (dev の依存、`composer install --no-dev`) |
 | 静的ビルド | アプリケーションへのリバースプロキシの後ろ | アプリケーションと同じオリジン |
 | npm パッケージ | Bundle への `file:` の依存 | プラグインへの `file:` の依存 |
 

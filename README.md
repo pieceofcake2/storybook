@@ -28,9 +28,13 @@ export default meta;
 export const Primary: StoryObj<typeof meta> = {};
 ```
 
-It consists of a CakePHP plugin, which provides the render endpoint (`POST /_storybook/render`,
-disabled by default), and a Storybook framework that uses Vite (`@pieceofcake2/storybook`,
-included in the Composer package).
+It consists of a CakePHP plugin, which provides the render endpoint (`POST /_storybook/render`),
+and a Storybook framework that uses Vite (`@pieceofcake2/storybook`, included in the Composer
+package).
+
+> [!IMPORTANT]
+> This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
+> and never install it in production.
 
 ## Documentation
 
@@ -48,19 +52,22 @@ The Markdown documentation is also included in the Composer package, in the plug
 ## Installation
 
 ```bash
-composer require pieceofcake2/storybook
+composer require --dev pieceofcake2/storybook
 npm install --save-dev storybook@^10 vite @pieceofcake2/storybook@file:plugins/Storybook/storybook
 ```
 
-Then load the plugin with its routes, enable it where Storybook is used (never in production), and
-configure `.storybook/main.ts`. See [Installation](docs/README.md#installation).
+Then load the plugin with its routes when it is installed, and configure `.storybook/main.ts`. See
+[Installation](docs/README.md#installation). To publish a static build to a development
+environment deployed with `composer install --no-dev`, add the package in the build step of that
+environment only. See [Static Build and Deployment](docs/README.md#static-build).
 
 ## Security
 
 Only the name of an Element (under the allowed directories, `Elements/components/` by default) and
-its args are sent to the application, never a template or code. The render endpoint is disabled
-unless `Storybook.enabled` is true. See [Security](docs/README.md#security) and
-[Disabling Storybook in Production](docs/README.md#production).
+its args are sent to the application, never a template or code. The render endpoint exists only
+where the plugin is installed: production is deployed with `composer install --no-dev`, so it does
+not have the plugin. See [Security](docs/README.md#security) and
+[Keeping Storybook out of Production](docs/README.md#production).
 
 ## Contributing
 
