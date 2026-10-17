@@ -132,6 +132,35 @@ for (const story of stories) {
     });
 }
 
+// "Show code" of Docs: the PHP code when the application renders the stories, the pre-rendered HTML
+// in a pre-rendered build
+await check(`Show code shows the ${prerendered ? 'pre-rendered HTML' : 'PHP code'}`, async (keep) => {
+    const page = await browser.newPage();
+    keep(page);
+    const renderRequests = [];
+    page.on('request', (request) => {
+        if (new URL(request.url()).pathname.startsWith('/_storybook/render')) {
+            renderRequests.push(request.url());
+        }
+    });
+    await page.goto(String(new URL('iframe.html?id=components-button--docs&viewMode=docs', base)));
+    await page.locator('.docs-story a.button').first().waitFor({ timeout: 15000 });
+    await page.getByText('Show code').first().click();
+    const expected = prerendered
+        ? '<a href="/jobs/1" class="button button--primary">Apply</a>'
+        : "<?= $this->element('components/button', [";
+    // The source block of the first story (the code block under its preview)
+    const code = page.locator('pre', { hasText: 'button' }).first();
+    await code.waitFor({ timeout: 5000 });
+    const text = await code.textContent();
+    if (!text.includes(expected) || (prerendered && text.includes('$this->element'))) {
+        throw new Error(`"Show code" does not show ${expected}: ${text}`);
+    }
+    assertNoRenderRequests(renderRequests);
+
+    return page;
+});
+
 if (prerendered) {
     await check('changed args show the notice of a static Storybook', async (keep) => {
         const { page, renderRequests } = await openStory('components-button--primary', '&args=label:Changed');
@@ -145,6 +174,6 @@ if (prerendered) {
 
 await browser.close();
 server?.close();
-const total = stories.length + (prerendered ? 1 : 0);
+const total = stories.length + (prerendered ? 2 : 1);
 console.log(`\n${total - failures.length}/${total} checks passed with ${prerendered ? 'the pre-rendered build' : 'the build'} at ${base}`);
 process.exit(failures.length === 0 && stories.length > 0 ? 0 : 1);
