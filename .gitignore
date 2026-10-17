@@ -1,0 +1,13 @@
+#
+/vendor/
+composer.lock
+.phpunit.result.cache
+/coverage.xml
+/junit.xml
+node_modules/
+/storybook/coverage/
+/tests/test_app/storybook-static/
+/tests/test_app/webroot/storybook/
+/tests/test_app/tmp/
+/tests/test_app/webroot/build/
+/tests/test_app/webroot/hot

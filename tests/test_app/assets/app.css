@@ -1,0 +1,32 @@
+.button {
+    display: inline-block;
+    padding: 0.5em 1em;
+    border-radius: 4px;
+    color: #fff;
+    text-decoration: none;
+}
+
+.button--primary {
+    background: #1d4ed8;
+}
+
+.button--secondary {
+    background: #4b5563;
+}
+
+.alert {
+    padding: 0.75em 1em;
+    border: 1px solid currentColor;
+}
+
+.alert--info {
+    color: #1e40af;
+}
+
+.alert--success {
+    color: #166534;
+}
+
+.alert--danger {
+    color: #991b1b;
+}
