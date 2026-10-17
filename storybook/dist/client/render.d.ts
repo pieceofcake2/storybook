@@ -1,19 +1,22 @@
 import type { ArgsStoryFn, RenderContext } from 'storybook/internal/types';
+import { CakePHPRenderingError } from './lib/CakePHPRenderingError.js';
 import type { CakePHPRenderer, CakePHPStoryResult } from './types.js';
-/**
- * Error returned by the CakePHP application (a 4xx or 5xx response).
- */
-export declare class CakePHPRenderingError extends Error {
-    readonly title: string;
-    readonly errorPage: string;
-    readonly status: number;
-    constructor(title: string, errorPage: string, status: number);
-}
+export { CakePHPRenderingError };
 /**
  * Renders a story from its `component`: an Element name (`'components/page_header'`), or
  * `element()` / `template()`. The args of the story are passed as the variables.
  */
 export declare const render: ArgsStoryFn<CakePHPRenderer>;
+/**
+ * Returns the body of the render request: the Element name (or the template name) and the args.
+ */
+export declare const renderRequestBody: (story: CakePHPStoryResult, args: Record<string, unknown>) => {
+    element: string;
+    args: Record<string, unknown>;
+} | {
+    template: string;
+    args: Record<string, unknown>;
+};
 /**
  * Sends the Element name (or the template name) and the args to the render endpoint, and returns
  * the HTML.

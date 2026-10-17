@@ -4,25 +4,21 @@ import type { ArgsStoryFn, RenderContext, StoryId } from 'storybook/internal/typ
 import { addons, simulatePageLoad } from 'storybook/preview-api';
 
 import { buildStoryArgs } from './lib/buildStoryArgs.js';
+import { CakePHPRenderingError } from './lib/CakePHPRenderingError.js';
 import { normalizeComponent } from './lib/component.js';
 import { setupEventCallbacks } from './lib/eventCallbacks.js';
 import { extractErrorTitle } from './lib/extractErrorTitle.js';
+import {
+    fetchPrerenderedHtml,
+    PRERENDERED_ARGS_NOTICE,
+    PrerenderedArgsError,
+    prerenderedDirUrl,
+    storybookBaseUrl,
+} from './lib/prerendered.js';
 import { renderUrl } from './lib/renderUrl.js';
 import type { CakePHPParameters, CakePHPRenderer, CakePHPStoryResult } from './types.js';
 
-/**
- * Error returned by the CakePHP application (a 4xx or 5xx response).
- */
-export class CakePHPRenderingError extends Error {
-    constructor(
-        public readonly title: string,
-        public readonly errorPage: string,
-        public readonly status: number
-    ) {
-        super(title);
-        this.name = 'CakePHPRenderingError';
-    }
-}
+export { CakePHPRenderingError };
 
 /**
  * Renders a story from its `component`: an Element name (`'components/page_header'`), or
@@ -45,6 +41,15 @@ export const render: ArgsStoryFn<CakePHPRenderer> = (args, context) => {
 };
 
 /**
+ * Returns the body of the render request: the Element name (or the template name) and the args.
+ */
+export const renderRequestBody = (
+    story: CakePHPStoryResult,
+    args: Record<string, unknown>
+): { element: string; args: Record<string, unknown> } | { template: string; args: Record<string, unknown> } =>
+    'element' in story ? { element: story.element, args } : { template: story.template, args };
+
+/**
  * Sends the Element name (or the template name) and the args to the render endpoint, and returns
  * the HTML.
  */
@@ -53,7 +58,7 @@ export const fetchStoryHtml = async (
     story: CakePHPStoryResult,
     args: Record<string, unknown>
 ): Promise<string> => {
-    const body = 'element' in story ? { element: story.element, args } : { template: story.template, args };
+    const body = renderRequestBody(story, args);
 
     let response: Response;
     try {
@@ -95,7 +100,9 @@ export async function renderToCanvas(
     const story = storyFn();
     const args = story.args ?? storyContext.args;
     const parameters: CakePHPParameters = storyContext.parameters.cakephp ?? {};
-    const url = renderUrl(parameters.id ?? id, window.location.origin, parameters.renderUrl);
+    const storyArgs = buildStoryArgs(args, storyContext.argTypes);
+    // A pre-rendered (static) Storybook loads the HTML written by "storybook-cakephp prerender"
+    const prerenderedDir = prerenderedDirUrl();
 
     // Ignore the responses of earlier renders (e.g. when the args change quickly)
     const renderId = (renderIds.get(canvasElement) ?? 0) + 1;
@@ -103,9 +110,23 @@ export async function renderToCanvas(
 
     let html: string;
     try {
-        html = await fetchStoryHtml(url, story, buildStoryArgs(args, storyContext.argTypes));
+        html =
+            prerenderedDir === null
+                ? await fetchStoryHtml(
+                      renderUrl(parameters.id ?? id, window.location.origin, parameters.renderUrl),
+                      story,
+                      storyArgs
+                  )
+                : await fetchPrerenderedHtml(prerenderedDir, id, renderRequestBody(story, storyArgs), storybookBaseUrl());
     } catch (error) {
         if (renderIds.get(canvasElement) !== renderId) {
+            return;
+        }
+        if (error instanceof PrerenderedArgsError) {
+            showMain();
+            console.info(`[@pieceofcake2/storybook] ${error.message} Changed args cannot be rendered in a static Storybook.`);
+            canvasElement.innerHTML = PRERENDERED_ARGS_NOTICE;
+
             return;
         }
         if (error instanceof CakePHPRenderingError) {

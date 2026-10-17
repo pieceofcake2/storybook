@@ -15,6 +15,12 @@ class StorybookControllerTest extends ControllerTestCase
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
         ], App::PREPEND);
         Configure::write('Storybook', ['helpers' => ['Html']]);
+        Configure::write('debug', 2);
+        $this->loadRoutes();
+    }
+
+    private function loadRoutes(): void
+    {
         Router::reload();
         require CONFIG . 'routes.php';
     }
@@ -67,10 +73,38 @@ class StorybookControllerTest extends ControllerTestCase
     public function testRouteIsConnectedWithoutConfiguration(): void
     {
         Configure::delete('Storybook');
-        Router::reload();
-        require CONFIG . 'routes.php';
+        $this->loadRoutes();
 
         $this->assertSame('storybook', Router::parse('/_storybook/render/components-button--primary')['plugin']);
+    }
+
+    public function testRouteIsConnectedInDebugMode1(): void
+    {
+        Configure::write('debug', 1);
+        $this->loadRoutes();
+
+        $this->assertSame('storybook', Router::parse('/_storybook/render/components-button--primary')['plugin']);
+    }
+
+    public function testRouteIsNotConnectedWithoutDebugMode(): void
+    {
+        Configure::write('debug', 0);
+        $this->loadRoutes();
+
+        $this->assertNull(Router::parse('/_storybook/render/components-button--primary')['plugin']);
+    }
+
+    public function testRenderIsNotFoundWhenDebugModeIsTurnedOffAfterTheRoutesAreLoaded(): void
+    {
+        Configure::write('debug', 0);
+
+        try {
+            $this->renderStory(['element' => 'components/button', 'args' => ['label' => 'A', 'url' => '/']]);
+            $this->fail('NotFoundException was not thrown.');
+        } catch (NotFoundException $e) {
+            $this->assertSame(404, $e->getCode());
+        }
+        $this->assertSame('', (string)$this->controller->response->body());
     }
 
     public function testRouteRejectsInvalidStoryIds(): void
@@ -164,27 +198,14 @@ class StorybookControllerTest extends ControllerTestCase
         $this->assertErrorHtml(404, 'Element &quot;components/missing&quot; was not found.', $html);
     }
 
-    public function testRenderErrorIsInternalServerErrorWithDetailsInDebugMode(): void
+    public function testRenderErrorIsInternalServerErrorWithDetails(): void
     {
-        Configure::write('debug', 2);
-
         $html = $this->renderStory(['element' => 'components/broken'], 'POST', 'components-broken--default');
 
         $this->assertErrorHtml(500, 'Undefined variable $undefinedVariable', $html);
         $this->assertStringNotContainsString('Before the error', $html);
         $this->assertStringContainsString('<p>Story: <code>components-broken--default</code></p>', $html);
         $this->assertStringContainsString('broken.ctp:9', $html);
-    }
-
-    public function testRenderErrorHidesDetailsInProductionMode(): void
-    {
-        Configure::write('debug', 0);
-
-        $html = $this->renderStory(['element' => 'components/broken']);
-
-        $this->assertErrorHtml(500, 'Failed to render the story.', $html);
-        $this->assertStringNotContainsString('undefinedVariable', $html);
-        $this->assertStringNotContainsString('broken.ctp', $html);
     }
 
     public function testErrorMessageCannotCloseTheComment(): void

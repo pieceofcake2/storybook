@@ -5,8 +5,10 @@
     "scripts": {
         "storybook": "storybook dev -p 6006 --no-open --disable-telemetry",
         "build-storybook": "storybook build --disable-telemetry -o webroot/storybook",
+        "prerender-storybook": "storybook-cakephp prerender --server http://127.0.0.1:8765 --dir webroot/storybook",
         "test-storybook": "vitest run",
         "test-static": "node bin/test-static.mjs http://127.0.0.1:8765/storybook/",
+        "test-prerendered": "node bin/test-static.mjs --prerendered webroot http://127.0.0.1:8766/storybook/",
         "e2e": "bin/e2e.sh"
     },
     "devDependencies": {
@@ -15,6 +17,7 @@
         "@storybook/addon-vitest": "^10.6.2",
         "@vitest/browser-playwright": "^5.0.4",
         "playwright": "^1.64.1",
+        "playwright-core": "^1.64.1",
         "storybook": "^10.6.2",
         "vite": "^8.3.4",
         "vitest": "^5.0.4"

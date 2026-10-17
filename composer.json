@@ -1,6 +1,6 @@
 {
     "name": "pieceofcake2/storybook",
-    "description": "Storybook for CakePHP 2 (development only): render Elements in Storybook (Vite), like Storybook for Symfony",
+    "description": "Storybook for CakePHP 2 (development only): render Elements in Storybook (Vite), inspired by Storybook for Symfony",
     "type": "cakephp-plugin",
     "keywords": ["cakephp", "cakephp2", "storybook", "vite"],
     "license": "MIT",

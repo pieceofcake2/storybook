@@ -6,6 +6,9 @@ App::uses('StorybookRenderer', 'Storybook.Lib');
 /**
  * Render endpoint of Storybook: `POST /_storybook/render/{storyId}`
  *
+ * It works only in debug mode (`debug` >= 1): the route is connected only in debug mode, and the
+ * requests are rejected (404) if debug is turned off after the routes are loaded.
+ *
  * Receives `{"element": "components/name", "args": {...}}` (or `{"template": ..., "args": ...}`)
  * as JSON and returns the rendered HTML fragment. Errors are returned as HTML whose first line is
  * `<!-- message -->`, with a 4xx or 5xx status, so that Storybook can show them.
@@ -47,12 +50,16 @@ class StorybookController extends Controller
     public $theme = null;
 
     /**
-     * Sets up the View of the application
+     * Rejects the requests outside debug mode, and sets up the View of the application
      *
      * @return void
+     * @throws NotFoundException When debug mode is off
      */
     public function beforeFilter()
     {
+        if ((int)Configure::read('debug') < 1) {
+            throw new NotFoundException();
+        }
         $settings = StorybookRenderer::viewSettings();
         $this->viewClass = $settings['viewClass'];
         $this->helpers = $settings['helpers'];
@@ -104,7 +111,8 @@ class StorybookController extends Controller
      * Returns the error HTML: the first line is `<!-- message -->` (read by the Storybook
      * renderer), followed by the details
      *
-     * The message of server errors is shown only in debug mode, as it can contain file paths.
+     * The endpoint works only in debug mode, so the message and the trace of server errors are
+     * shown.
      *
      * @param Throwable $e Error
      * @param string $story Story ID
@@ -112,8 +120,7 @@ class StorybookController extends Controller
      */
     protected function errorHtml(Throwable $e, string $story): string
     {
-        $debug = Configure::read('debug') > 0;
-        $message = $e instanceof HttpException || $debug ? $e->getMessage() : 'Failed to render the story.';
+        $message = $e->getMessage();
         $title = str_replace(["\r", "\n"], ' ', h($message));
 
         $html = '<!-- ' . $title . ' -->' . "\n";
@@ -123,7 +130,7 @@ class StorybookController extends Controller
         if ($story !== '') {
             $html .= '<p>Story: <code>' . h($story) . '</code></p>' . "\n";
         }
-        if ($debug && !$e instanceof HttpException) {
+        if (!$e instanceof HttpException) {
             $html .= '<pre>' . h($e->getFile() . ':' . $e->getLine() . "\n" . $e->getTraceAsString()) . '</pre>' . "\n";
         }
         $html .= '</div>' . "\n";

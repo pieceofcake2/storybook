@@ -9,10 +9,10 @@
 [![Codecov](https://img.shields.io/codecov/c/gh/pieceofcake2/storybook?label=Coverage)](https://codecov.io/gh/pieceofcake2/storybook)
 
 pieceofcake2/storybook renders the Elements of a CakePHP 2 application in
-[Storybook](https://storybook.js.org/), in the same way as
-[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) renders Twig components.
-A story names an Element and its args, Storybook sends them to the application, and the
-application renders the Element with its own View class and helpers.
+[Storybook](https://storybook.js.org/). It is inspired by
+[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle). A story names an Element
+and its args, Storybook sends them to the application, and the application renders the Element
+with its own View class and helpers.
 
 ```ts
 // stories/components/button.stories.ts
@@ -32,9 +32,13 @@ It consists of a CakePHP plugin, which provides the render endpoint (`POST /_sto
 and a Storybook framework that uses Vite (`@pieceofcake2/storybook`, included in the Composer
 package).
 
+![A story in Storybook, with its args in Controls](docs/img/story-controls.png)
+
+![The Docs page of a component, with the PHP code shown by "Show code"](docs/img/docs-show-code.png)
+
 > [!IMPORTANT]
 > This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
-> and never install it in production.
+> and never install it in production. The render endpoint works only in debug mode.
 
 ## Documentation
 
@@ -48,6 +52,7 @@ The Markdown documentation is also included in the Composer package, in the plug
 * PHP 8.0+
 * pieceofcake2/cakephp 2.12+
 * Node.js 20.19+, Storybook 10 and Vite 5 to 8
+* To publish a static Storybook: `playwright-core` and Chrome or Chromium
 
 ## Installation
 
@@ -57,16 +62,25 @@ npm install --save-dev storybook@^10 vite @pieceofcake2/storybook@file:plugins/S
 ```
 
 Then load the plugin with its routes when it is installed, and configure `.storybook/main.ts`. See
-[Installation](docs/README.md#installation). To publish a static build to a development
-environment deployed with `composer install --no-dev`, add the package in the build step of that
-environment only. See [Static Build and Deployment](docs/README.md#static-build).
+[Installation](docs/README.md#installation).
+
+Develop the stories with `storybook dev` and the application running in debug mode. To publish
+Storybook (e.g. on a development server running with debug 0 and without the plugin), pre-render
+the stories into a static build, which does not request the application:
+
+```bash
+npx storybook build -o storybook-static
+npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+```
+
+See [Publishing a Static Storybook](docs/README.md#static-build).
 
 ## Security
 
 Only the name of an Element (under the allowed directories, `Elements/components/` by default) and
 its args are sent to the application, never a template or code. The render endpoint exists only
-where the plugin is installed: production is deployed with `composer install --no-dev`, so it does
-not have the plugin. See [Security](docs/README.md#security) and
+where the plugin is installed, and only in debug mode: production is deployed with
+`composer install --no-dev`, so it does not have the plugin. See [Security](docs/README.md#security) and
 [Keeping Storybook out of Production](docs/README.md#production).
 
 ## Contributing
@@ -79,7 +93,7 @@ is committed, since applications install it from the Composer package without bu
 ## Origin
 
 This package was created by [pieceofcake2](https://github.com/pieceofcake2), which also maintains
-it. Its design follows [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle), and
+it. It is inspired by [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle), and
 parts of the Storybook framework are adapted from it (MIT License, Copyright (c) 2024 SensioLabs).
 See [storybook/NOTICE.md](storybook/NOTICE.md).
 

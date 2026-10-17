@@ -1,14 +1,15 @@
 # Storybook ドキュメント
 
 pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [Storybook](https://storybook.js.org/) で
-描画します。[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) が Twig コンポーネントを
-描画するのと同じ仕組みです。描画のエンドポイントを提供する CakePHP プラグインと、Composer パッケージに
-含まれる Storybook のフレームワーク (`@pieceofcake2/storybook`、Vite ビルダー) からなります。
+描画します。[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) に着想を得ています。描画の
+エンドポイントを提供する CakePHP プラグインと、Composer パッケージに含まれる Storybook のフレームワーク
+(`@pieceofcake2/storybook`、Vite ビルダー) からなります。
 
 > [!IMPORTANT]
 > このプラグインは開発専用です。dev の依存としてインストールし (`composer require --dev`)、本番には
-> インストールしないでください。プラグインをインストールしてルートとあわせて読み込んだ環境では、描画の
-> エンドポイントが使えます。[本番に入れない](#production) を参照してください。
+> インストールしないでください。描画のエンドポイントは debug モード (`debug` が 1 以上) でだけ動くので、
+> Storybook を使うときはアプリケーションを debug モードで起動します。[本番に入れない](#production) を
+> 参照してください。
 
 - [仕組み](#how-it-works)
 - [要件](#requirements)
@@ -17,11 +18,10 @@ pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [
 - [ストーリーの書き方](#writing-stories)
 - [ローカルでの起動](#running-storybook-locally)
 - [アプリケーションの Vite の設定](#vite-config)
-- [静的ビルドと公開](#static-build)
+- [静的な Storybook の公開](#static-build)
 - [本番に入れない](#production)
 - [セキュリティ](#security)
 - [ストーリーのテスト](#testing-stories)
-- [Storybook for Symfony との違い](#differences)
 - [制限](#limitations)
 
 <a id="how-it-works"></a>
@@ -50,14 +50,16 @@ Content-Type: application/json
 同じように、アプリケーションの View クラスとヘルパーで Element を描画し、HTML の断片を返します。プレビューは
 それを canvas に入れ、含まれるスクリプトを実行します。
 
+![Storybook に表示したテスト用のアプリケーションのストーリーと、Controls の args](../img/story-controls.png)
+
 送るのは (許可したディレクトリの下の) Element の名前と args だけです。PHP のテンプレートはサンドボックスで
 実行できないため、テンプレートやコードをクライアントから受け取ることはありません。複数の Element を
 組み合わせるストーリーは、サーバー側のテンプレートを名前で選びます ([ストーリー用のテンプレート](#story-templates)
 を参照)。
 
-`storybook dev` では、Storybook の Vite の開発サーバーが `/_storybook/render` をアプリケーションにプロキシします。
-静的ビルド (`storybook build`) はアプリケーションと同じオリジンに置き、そのオリジンの `/_storybook/render` に
-描画の依頼を送ります。
+`storybook dev` では、Storybook の Vite の開発サーバーが `/_storybook/render` を debug モードのアプリケーションに
+プロキシします。Storybook を公開するときは、ストーリーを静的ビルドに事前描画するので、アプリケーションは
+要りません ([静的な Storybook の公開](#static-build) を参照)。
 
 <a id="requirements"></a>
 
@@ -65,6 +67,8 @@ Content-Type: application/json
 
 - PHP 8.0 以上、pieceofcake2/cakephp 2.12 以上
 - Node.js 20.19 以上、Storybook 10、Vite 5〜8
+- 静的な Storybook を公開するときは、`playwright-core` と Chrome か Chromium
+  ([静的な Storybook の公開](#static-build) を参照)
 
 <a id="installation"></a>
 
@@ -85,8 +89,8 @@ Content-Type: application/json
    | レガシー (`app/Config/`, `app/Plugin/`) | `"app/Plugin/{$name}/": ["type:cakephp-plugin"]` | `app/Plugin/Storybook/` |
 
    通常の依存にはしないでください。本番は `composer install --no-dev` でデプロイし、プラグインを
-   インストールしません。`--no-dev` でデプロイする開発環境に静的ビルドを公開するときは、その環境のビルドで
-   だけパッケージを追加します ([静的ビルドと公開](#static-build) を参照)。
+   インストールしません。公開する Storybook は dev の依存をインストールした場所 (CI など) で事前描画するので、
+   それを置く環境にはプラグインは要りません ([静的な Storybook の公開](#static-build) を参照)。
 
 2. `config/bootstrap.php` (レガシーレイアウトでは `app/Config/bootstrap.php`) で、インストールされている
    ときだけ**ルートとあわせてプラグインを読み込みます**。
@@ -105,8 +109,9 @@ Content-Type: application/json
    `_cake_core_` のキャッシュがあればそこから読むため、デプロイのときは (プラグインを変えたときと同じく)
    キャッシュを消してください。
 
-   `'routes' => true` で読み込むと、描画のルート (`/_storybook/render/:story`) が追加されます。ほかに
-   切り替えはありません。
+   `'routes' => true` で読み込むと、debug モード (`Configure::read('debug')` が 1 以上) のときだけ、描画の
+   ルート (`/_storybook/render/:story`) が追加されます。`debug` が 0 ならルートを追加せず、ルートを読み込んだ
+   後に debug モードを切った場合もコントローラーが 404 を返します。
 
    `config/routes.php` で (既定のものと同じく) `CakePlugin::routes()` を呼んでいる必要があります。
 
@@ -331,7 +336,7 @@ export const Large: Story = {
 
 ### アクション
 
-関数の args (`fn()` や `action` の argTypes) はサーバーに送りません。Storybook for Symfony と同じく、
+関数の args (`fn()` や `action` の argTypes) はサーバーに送りません。代わりに、
 `data-storybook-callbacks` 属性に arg の名前を含む要素のイベントに結び付けます。
 `data-storybook-callbacks="increment"` なら、その要素の `increment` イベントで `increment` の arg が
 呼ばれます。
@@ -367,6 +372,8 @@ export default {
 `@storybook/addon-docs` を使うと、「Show code」にストーリーを描画する PHP のコード
 (`<?= $this->element('components/button', ['label' => '応募する', ...]) ?>` など) が表示されます。
 
+![「Show code」で PHP のコードを表示したコンポーネントの Docs のページ](../img/docs-show-code.png)
+
 ### エラー
 
 アプリケーションがエラーを返すと、ストーリーは失敗として扱われ、canvas にエラーのページが表示されます。
@@ -378,13 +385,13 @@ HTML で、次のステータスで返ります。
 | 400 | 不正な JSON、不正な Element・テンプレートの名前、オブジェクトでない args |
 | 404 | 許可したディレクトリの外の Element、存在しない Element・テンプレート |
 | 405 | POST でない依頼 |
-| 500 | 描画中のエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースは debug モードでだけ表示 |
+| 500 | 描画中のエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースを表示 |
 
 <a id="running-storybook-locally"></a>
 
 ## ローカルでの起動
 
-(dev の依存をインストールした) アプリケーションを起動し、`storybook dev` を実行します。
+(dev の依存をインストールした) アプリケーションを debug モードで起動し、`storybook dev` を実行します。
 
 ```bash
 # ターミナル 1: CakePHP のアプリケーション
@@ -404,7 +411,8 @@ http://localhost:6006 を開きます。`opcache.revalidate_freq=0` にすると
 {
     "scripts": {
         "storybook": "storybook dev -p 6006",
-        "build-storybook": "storybook build"
+        "build-storybook": "storybook build",
+        "prerender-storybook": "storybook-cakephp prerender --server http://127.0.0.1:8765"
     }
 }
 ```
@@ -439,67 +447,141 @@ Storybook 用に別の設定ファイルを使うときは、フレームワー�
 
 <a id="static-build"></a>
 
-## 静的ビルドと公開
+## 静的な Storybook の公開
 
-`storybook build` は静的な Storybook を書き出します (既定は `storybook-static/`)。これをアプリケーションと
-同じオリジンの任意のパス (https://dev.example.com/storybook/ など) に置きます。静的ビルドは (自身のパスでは
-なく) オリジンの `/_storybook/render` に描画の依頼を送り、Element の HTML は同じオリジンのアプリケーションの
-画像やアセットを参照します。その環境のアプリケーションには、プラグインをインストールして読み込んでおきます。
+ストーリーは、アプリケーションを debug モードで起動して `storybook dev` で作ります
+([ローカルでの起動](#running-storybook-locally) を参照)。Storybook を公開するとき (`debug` を 0 にし、この
+プラグインを入れずに動かす開発環境やステージング環境など) は、ストーリーを静的ビルドに事前描画します。
+公開した Storybook はストーリーの HTML を自身のファイルから読み込み、アプリケーションには依頼を送りません。
 
-たとえば、本番と同じく `composer install --no-dev` でデプロイする開発環境でだけ Storybook を公開するには、
-次のようにします。
+Storybook をビルドし、debug モードで起動したアプリケーションで事前描画します (dev の依存をインストールした
+CI など)。
 
-1. 開発環境のビルドでだけ、`composer install` の後にこのパッケージを `composer.lock` のバージョンで
-   追加します。
+```bash
+# debug モードの CakePHP のアプリケーション (dev の依存をインストールしたもの)
+php -S 127.0.0.1:8765 -t webroot webroot/index.php &
 
-   ```bash
-   composer install --no-dev --no-interaction
-   composer require "pieceofcake2/storybook:$(jq -r '.["packages-dev"][] | select(.name == "pieceofcake2/storybook") | .version' composer.lock)" \
-       --update-no-dev --no-interaction
-   ```
+npx storybook build -o storybook-static
+npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+```
 
-   `composer require` は、ビルドの `composer.json` と `composer.lock` でパッケージを `require` に移し
-   (これらはコミットしません)、依存 (`composer/installers` など) とあわせて lock のバージョンで
-   インストールします。ほかのパッケージは lock のバージョンのままで、ほかの dev の依存はインストール
-   されません。オートローダーを作り直すので、`composer install` と同じオプション
-   (`--optimize-autoloader`、`--classmap-authoritative` など) を渡してください。
+`storybook-cakephp prerender` (フレームワークのコマンド) は、ビルドをローカルのポートで配信し、その
+`index.json` のすべてのストーリーをヘッドレスの Chrome で開きます。プレビューの描画の依頼を
+(`storybook dev` と同じく `X-Storybook-Proxy: true` ヘッダーを付けて) アプリケーションに転送し、応答を
+`<dir>/cakephp-prerendered/<ストーリーの ID>.json` に書き出します。最後に `<dir>/iframe.html` に
+`<meta name="storybook-cakephp-prerendered">` を足します。これがあると、プレビューは `iframe.html` から
+相対の `cakephp-prerendered/` からストーリーを読み込むので、ビルドはどのパス
+(https://dev.example.com/storybook/ など) に置いても動きます。
 
-   アプリケーションはインストールされているときだけプラグインを読み込むので ([インストール](#installation)
-   を参照)、本番と開発環境で同じ `config/bootstrap.php` を使えます。
+ビルドしたプレビューがストーリーを描画するので、事前描画の HTML は、ビルドが計算するとおりの args で
+作られます: meta とストーリーの args、render 関数、play 関数が設定する args、ストーリーが import した
+アセットの URL (`import photo from './photo.jpg'`。ビルドの中を指す) です。ビルドを配信した URL は
+プレースホルダーとして保存し、公開した Storybook の URL に置き換えます。
 
-2. 開発環境へのデプロイで Storybook をビルドし、`/storybook/` で配信します。webroot に書き出す
-   (`npx storybook build -o webroot/storybook`。`webroot/storybook/` は `.gitignore` に足す) か、同じホストで
-   サイトの静的ファイルを配信しているストレージや CDN にアップロードします。
+### 必要なもの
 
-3. 本番では、パッケージの追加も Storybook のビルドとデプロイもしません (次の節を参照)。
+- [`playwright-core`](https://www.npmjs.com/package/playwright-core)。フレームワークの optional な
+  peer dependency で、ブラウザーはダウンロードしません: `npm install --save-dev playwright-core`
+- Chrome か Chromium。`--browser` で指定します。
 
-開発環境に Basic 認証がある場合も、描画の依頼は同じオリジンなので、ブラウザーが認証情報を送ります。
+  | `--browser` | ブラウザー |
+  | --- | --- |
+  | `chrome` (既定) | インストール済みの Google Chrome (GitHub がホストするランナーにはある) |
+  | `msedge`、`chrome-beta` など | ほかのインストール済みのブラウザー (Playwright の [channel](https://playwright.dev/docs/browsers)) |
+  | `chromium` | Playwright の Chromium (`npx playwright install chromium`) |
+  | パス (`/usr/bin/chromium` など) | Chrome か Chromium の実行ファイル |
+
+  環境変数 `STORYBOOK_CAKEPHP_BROWSER` で既定を変えられます。
+
+### オプション
+
+| オプション | 説明 |
+| --- | --- |
+| `--server <url>` | debug モードで動いている CakePHP のアプリケーションの URL (必須) |
+| `--dir <dir>` | Storybook のビルドのディレクトリ (既定は `storybook-static`) |
+| `--browser <browser>` | ブラウザー (既定は `chrome`。上を参照) |
+| `--concurrency <n>` | 同時に描画するストーリーの数 (既定は 4) |
+| `--timeout <ms>` | 1 つのストーリーのタイムアウト (既定は 30000) |
+
+事前描画できないストーリーがあると、コマンドは失敗します (終了コード 1)。タイムアウトした、例外を投げた、
+アプリケーションが debug モードでなく描画のエンドポイントが使えない、などの場合です。アプリケーションが
+エラーを返すストーリーは、`storybook dev` で表示されるのと同じくエラーのページで事前描画し、警告として
+一覧にします。
+
+`storybook build` はディレクトリを置き換えるので、ビルドのたびに `storybook-cakephp prerender` を実行します。
+プラグインを更新した後に `npx storybook-cakephp` が見つからない場合は、もう一度 `npm install` を実行して
+ください。
+
+<a id="static-controls"></a>
+
+### 静的な Storybook での Controls
+
+ストーリーはそれぞれの args で事前描画するため、静的な Storybook はほかの args では描画できません。
+Controls で args を変えると、canvas にはストーリーの代わりに案内 ("This story cannot be rendered with these
+args") が表示されます。args をリセットすると、ストーリーがまた表示されます。それ以外は `storybook dev` と
+同じように動きます: ストーリーと Docs は事前描画の HTML を表示し、そのスクリプトが動き、play 関数と
+アクション (`data-storybook-callbacks`) が動き、「Show code」には PHP のコードが表示されます。
+
+args は、ストーリーを読み込むたびに同じである必要があります。`new Date()` のような arg は事前描画のときと
+公開した Storybook とで変わるため、そのストーリーには案内が表示されます。
+
+![Controls で args を変えたときに静的な Storybook が表示する案内](../img/static-changed-args.png)
+
+### 公開
+
+事前描画したビルドは静的なファイルです。環境のほかの静的ファイルとあわせてデプロイします。開発サーバーの
+`/storybook/` の下 (`npx storybook build -o webroot/storybook`。`webroot/storybook/` は `.gitignore` に足す)
+や、サイトを配信しているストレージや CDN などです。そこにはプラグインが要らないので、その環境は本番と同じく
+`composer install --no-dev` でデプロイできます。Element の HTML は、アプリケーションの画像やアセット
+(`/img/logo.svg` など) を URL で参照します。それらが見つかるよう、Storybook はアプリケーションと同じホストに
+置きます。
+
+たとえば GitHub Actions では、次のようにします。
+
+```yaml
+- run: composer install --no-interaction
+- run: npm ci
+- name: Build and pre-render Storybook
+  run: |
+    php -S 127.0.0.1:8765 -t webroot webroot/index.php &
+    npx storybook build -o storybook-static
+    npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+  env:
+    APP_DEBUG: 1 # アプリケーションで debug モードにする方法に合わせる
+# この後、storybook-static/ を開発環境の /storybook/ にアップロードする
+```
+
+CI のアプリケーションは、ストーリーの Element を描画できれば十分です。Element が必要とするもの (ヘルパーや
+Element がデータベースを読むならデータベースなど) を用意してください。
+
+事前描画していないビルドは、オリジンの `/_storybook/render` に描画の依頼を送ります。プラグインを入れた
+debug モードのアプリケーションと同じオリジン (ローカルでアプリケーションが配信する場合など) でだけ動きます。
 
 <a id="production"></a>
 
 ## 本番に入れない
 
 描画のエンドポイントは、許可したディレクトリの Element を任意の args で描画するもので、本番向けでは
-ありません。プラグインには無効にする切り替えはなく、dev の依存として本番にはインストールしません。
+ありません。debug モードでだけ動き、プラグインは dev の依存として本番にはインストールしません。
 
-- プラグインは `composer require --dev` でインストールし、本番は `composer install --no-dev` で
-  デプロイする。本番のビルドではパッケージを追加しない ([静的ビルドと公開](#static-build) を参照)。
-  本番で `POST /_storybook/render/x` が 404 になることを確かめてください。
-- 静的ビルドを本番にデプロイしない。または本番にデプロイするファイルから外す (`webroot/storybook/` など)。
+- プラグインは `composer require --dev` でインストールし、本番は `composer install --no-dev` で、debug
+  モードを切ってデプロイする。本番で `POST /_storybook/render/x` が 404 になることを確かめてください。
+- Storybook は事前描画したビルドで公開する ([静的な Storybook の公開](#static-build) を参照)。それを本番に
+  デプロイしない。または本番にデプロイするファイルから外す (`webroot/storybook/` など)。
 
 <a id="security"></a>
 
 ## セキュリティ
 
 - 受け取るのは Element またはストーリー用のテンプレートの名前と、args だけです。PHP のテンプレートは
-  サンドボックスで実行できないため、テンプレートやコードをクライアントから受け取ることはありません
-  (Storybook for Symfony は、クライアントが送った Twig のテンプレートをサンドボックスでコンパイルします)。
+  サンドボックスで実行できないため、テンプレートやコードをクライアントから受け取ることはありません。
 - 名前は `[a-z0-9_/-]+` の形に限り、`..`、先頭の `/`、プラグインの接頭辞、拡張子は使えません。Element は
   許可したディレクトリ (`Storybook.elements`) の下、テンプレートはテンプレートのディレクトリ
   (`Storybook.templates`。false で無効にできる) の下に限ります。
 - args は、キーが PHP の変数名として正しい (`this` でない) JSON のオブジェクトである必要があります。
-- エンドポイントはプラグインをインストールした環境にだけあり (dev の依存なので本番にはない)、POST だけを
-  受け付け、`Cache-Control: no-store` と `X-Robots-Tag: noindex` を返します。サーバーのエラーのメッセージとトレースは debug モードでだけ表示します。
+- エンドポイントはプラグインをインストールした環境に (dev の依存なので本番にはない)、debug モード
+  (`debug` が 1 以上。それ以外は 404) のときだけあります。POST だけを受け付け、`Cache-Control: no-store` と
+  `X-Robots-Tag: noindex` を返します。debug モードなので、サーバーのエラーのメッセージとトレースを表示します。
 - 依頼はフォームを使わずに Storybook から来るため、エンドポイントは Security コンポーネント (CSRF) と
   セッションを使いません。Element が権限のない人にデータを見せてしまう環境にはインストールしないでください。
   Element は依頼の args と、ヘルパーや Element が自分で読むもの (設定、データベースなど) で描画されます。
@@ -532,25 +614,9 @@ export default defineConfig({
 });
 ```
 
-このパッケージのリポジトリでは、テスト用のアプリケーションのストーリーをこの方法で実行し、さらに
-アプリケーションが配信する静的ビルドのすべてのストーリーを確かめています (`tests/test_app/bin/e2e.sh`)。
-
-<a id="differences"></a>
-
-## Storybook for Symfony との違い
-
-| | Storybook for Symfony | pieceofcake2/storybook |
-| --- | --- | --- |
-| クライアントが送るもの | Twig のテンプレートのソース (サンドボックスでコンパイル) と args | Element (またはサーバー側のストーリー用のテンプレート) の名前と args |
-| ストーリーでコンポーネントを組み合わせる | ストーリーの中の Twig のテンプレート | サーバー側のストーリー用のテンプレート (`templates/Stories/`) |
-| プレビューの `<head>` | `storybook:generate-preview` コマンドで生成 | `.storybook/preview.ts` で Vite によりアセットを import (と `preview-head.html`) |
-| アセット | AssetMapper または Webpack Encore | Vite (アプリケーションの Vite の設定) |
-| ビルダー | Webpack と Vite | Vite |
-| args processor、コンポーネントのモック、Live Components | 対応 | 未対応 |
-| テンプレートの監視 | `additionalWatchPaths` | `watchPaths` |
-| 本番 | `prod` 環境で無効 | インストールしない (dev の依存、`composer install --no-dev`) |
-| 静的ビルド | アプリケーションへのリバースプロキシの後ろ | アプリケーションと同じオリジン |
-| npm パッケージ | Bundle への `file:` の依存 | プラグインへの `file:` の依存 |
+このパッケージのリポジトリでは、テスト用のアプリケーションのストーリーをこの方法で実行しています。さらに、
+アプリケーションが配信するビルドと、アプリケーションを止めて静的なファイルとして配信する事前描画した
+ビルドで、すべてのストーリーを確かめています (`tests/test_app/bin/e2e.sh`)。
 
 <a id="limitations"></a>
 
@@ -560,6 +626,8 @@ export default defineConfig({
   組み立てるストーリー用のテンプレートか、配列を受け取る Element が必要です。
 - 依頼は `/_storybook/render` への POST なので、現在の依頼 (URL、クエリ、セッション、ログイン中のユーザー) に
   依存する Element は、その依頼の内容で描画されます。
+- 事前描画した Storybook は、ストーリーをそれぞれの args でだけ表示します
+  ([静的な Storybook での Controls](#static-controls) を参照)。
 - Element のキャッシュ (`element()` の `cache` オプション) とプラグインの Element (`Plugin.name`) には
   対応していません。
 - フレームワークは Vite のビルダーだけに対応しています (Webpack には対応していません)。

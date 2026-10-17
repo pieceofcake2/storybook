@@ -7,7 +7,7 @@ const config: StorybookConfig = {
         name: '@pieceofcake2/storybook',
         options: {
             // The test application (php -S, see bin/e2e.sh)
-            server: 'http://127.0.0.1:8765',
+            server: `http://127.0.0.1:${process.env.PORT ?? 8765}`,
             proxyPaths: ['/img'],
             // Reload the stories when the templates change
             watchPaths: ['templates'],
