@@ -161,6 +161,31 @@ await check(`Show code shows the ${prerendered ? 'pre-rendered HTML' : 'PHP code
     return page;
 });
 
+// The Controls panel: editors when the application renders the stories, read-only (the values of
+// the args, without editors) in a pre-rendered build
+await check(`Controls are ${prerendered ? 'read-only' : 'editable'}`, async (keep) => {
+    const page = await browser.newPage();
+    keep(page);
+    await page.goto(String(new URL('?path=/story/components-button--primary', base)));
+    await page.frameLocator('#storybook-preview-iframe').locator('#storybook-root a.button').waitFor({ timeout: 15000 });
+    await page.getByRole('tab', { name: 'Controls' }).click();
+    const label = page.locator('table tr', { hasText: 'label' }).first();
+    await label.waitFor({ timeout: 5000 });
+    const editors = await page.locator('table textarea, table input, table select').count();
+    if (prerendered) {
+        if (editors !== 0) {
+            throw new Error(`The Controls panel has ${editors} editors`);
+        }
+        if (!(await label.textContent()).includes('"Apply"')) {
+            throw new Error(`The value of the arg is not shown: ${await label.textContent()}`);
+        }
+    } else if (editors === 0) {
+        throw new Error('The Controls panel has no editors');
+    }
+
+    return page;
+});
+
 if (prerendered) {
     await check('changed args show the notice of a static Storybook', async (keep) => {
         const { page, renderRequests } = await openStory('components-button--primary', '&args=label:Changed');
@@ -174,6 +199,6 @@ if (prerendered) {
 
 await browser.close();
 server?.close();
-const total = stories.length + (prerendered ? 2 : 1);
+const total = stories.length + (prerendered ? 3 : 2);
 console.log(`\n${total - failures.length}/${total} checks passed with ${prerendered ? 'the pre-rendered build' : 'the build'} at ${base}`);
 process.exit(failures.length === 0 && stories.length > 0 ? 0 : 1);

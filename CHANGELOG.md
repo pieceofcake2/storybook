@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- In a pre-rendered (static) Storybook, the controls are read-only: every arg gets
+  `control: false`, so the Controls panel and the args table of Docs show the args without
+  editors, with the value of each arg in the "Default" column. `storybook dev` keeps the editors.
+  The notice for changed args remains for args changed in other ways (e.g. the `args` parameter
+  of the URL).
+
 ## [1.2.0] - 2026-10-18
 
 ### Changed
@@ -49,6 +59,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`excludeVitePlugins`), actions with `data-storybook-callbacks`, and the PHP code in Docs.
 - Static builds that work on the same origin as the application, under any path.
 
+[Unreleased]: https://github.com/pieceofcake2/storybook/compare/v1.2.0...HEAD
 [1.2.0]: https://github.com/pieceofcake2/storybook/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pieceofcake2/storybook/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pieceofcake2/storybook/releases/tag/v1.0.0

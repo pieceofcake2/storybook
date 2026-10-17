@@ -519,10 +519,16 @@ npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-s
 ### 静的な Storybook での Controls
 
 ストーリーはそれぞれの args で事前描画するため、静的な Storybook はほかの args では描画できません。
-Controls で args を変えると、canvas にはストーリーの代わりに案内 ("This story cannot be rendered with these
-args") が表示されます。args をリセットすると、ストーリーがまた表示されます。それ以外は `storybook dev` と
-同じように動きます: ストーリーと Docs は事前描画の HTML を表示し、そのスクリプトが動き、play 関数と
-アクション (`data-storybook-callbacks`) が動きます。
+そのため Controls は読み取り専用になります。Controls パネルと Docs の args の表には、args (名前、説明、型) が
+編集欄なしで表示され、「Default」の列にストーリーでの各 arg の値が表示されます (`argTypes` で
+`table.defaultValue` を設定した arg を除く)。長い配列やオブジェクトはツールチップで表示されます。
+フレームワークは、事前描画したビルドのときだけすべての arg に `control: false` を設定するので、
+`storybook dev` では編集できます。
+
+![値を表示した、静的な Storybook の読み取り専用の Controls](../img/static-controls.png)
+
+それ以外は `storybook dev` と同じように動きます: ストーリーと Docs は事前描画の HTML を表示し、その
+スクリプトが動き、play 関数とアクション (`data-storybook-callbacks`) が動きます。
 
 args は変えられないので、Docs の「Show code」には PHP のコードの代わりに、ストーリーの事前描画の HTML
 (アプリケーションが描画したまま。整形はしない) が表示されます。事前描画していない args では PHP のコードが
@@ -530,10 +536,10 @@ args は変えられないので、Docs の「Show code」には PHP のコー�
 
 ![「Show code」で事前描画の HTML を表示した、静的な Storybook の Docs のページ](../img/static-show-code.png)
 
-args は、ストーリーを読み込むたびに同じである必要があります。`new Date()` のような arg は事前描画のときと
-公開した Storybook とで変わるため、そのストーリーには案内が表示されます。
-
-![Controls で args を変えたときに静的な Storybook が表示する案内](../img/static-changed-args.png)
+それでも args が変わった場合 (URL の `args` パラメーターなど) は、canvas にはストーリーの代わりに案内
+("This story cannot be rendered with these args") が表示されます。また、args はストーリーを読み込むたびに
+同じである必要があります。`new Date()` のような arg は事前描画のときと公開した Storybook とで変わるため、
+そのストーリーには案内が表示されます。
 
 ### 公開
 
@@ -634,7 +640,7 @@ export default defineConfig({
   組み立てるストーリー用のテンプレートか、配列を受け取る Element が必要です。
 - 依頼は `/_storybook/render` への POST なので、現在の依頼 (URL、クエリ、セッション、ログイン中のユーザー) に
   依存する Element は、その依頼の内容で描画されます。
-- 事前描画した Storybook は、ストーリーをそれぞれの args でだけ表示します
+- 事前描画した Storybook は、ストーリーをそれぞれの args でだけ表示し、Controls は読み取り専用です
   ([静的な Storybook での Controls](#static-controls) を参照)。
 - Element のキャッシュ (`element()` の `cache` オプション) とプラグインの Element (`Plugin.name`) には
   対応していません。

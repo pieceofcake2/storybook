@@ -529,10 +529,16 @@ Run `storybook-cakephp prerender` after each `storybook build`, which replaces t
 ### Controls in a static Storybook
 
 The stories are pre-rendered with their own args, and a static Storybook cannot render other args.
-When the args are changed in Controls, the canvas shows a notice ("This story cannot be rendered
-with these args") instead of the story. Resetting the args shows the story again. The rest works as
-in `storybook dev`: the stories and the Docs show the pre-rendered HTML, its scripts run, and play
-functions and actions (`data-storybook-callbacks`) work.
+Its controls are read-only: the Controls panel and the table of the args in Docs show the args
+(their names, descriptions and types) without editors, and the value of each arg in the story in
+the "Default" column (unless `table.defaultValue` is set in its `argTypes`). Long arrays and objects
+are shown in a tooltip. The framework sets `control: false` for every arg when the build is
+pre-rendered, so `storybook dev` keeps the editors.
+
+![The read-only Controls of a static Storybook, with the values of the args](img/static-controls.png)
+
+The rest works as in `storybook dev`: the stories and the Docs show the pre-rendered HTML, its
+scripts run, and play functions and actions (`data-storybook-callbacks`) work.
 
 Since the args cannot be changed, "Show code" in Docs shows the pre-rendered HTML of the story (as
 the application rendered it, not reformatted) instead of the PHP code. For args that were not
@@ -540,10 +546,10 @@ pre-rendered, it shows the PHP code.
 
 ![The Docs page of a static Storybook, with the pre-rendered HTML shown by "Show code"](img/static-show-code.png)
 
-The args must be the same every time the stories are loaded: an arg such as `new Date()` differs
-between the pre-rendering and the published Storybook, so the story shows the notice.
-
-![The notice shown by a static Storybook when the args are changed in Controls](img/static-changed-args.png)
+If the args are still changed (e.g. by the `args` parameter of the URL), the canvas shows a notice
+("This story cannot be rendered with these args") instead of the story. The args must also be the
+same every time the stories are loaded: an arg such as `new Date()` differs between the
+pre-rendering and the published Storybook, so the story shows the notice.
 
 ### Deployment
 
@@ -650,8 +656,8 @@ as static files with the application stopped (`tests/test_app/bin/e2e.sh`).
   template that builds them, or an Element that accepts arrays.
 - The request is a POST request to `/_storybook/render`, so Elements that depend on the current
   request (URL, query, session, logged-in user) render with that request.
-- A pre-rendered Storybook shows the stories with their own args only (see
-  [Controls in a static Storybook](#static-controls)).
+- A pre-rendered Storybook shows the stories with their own args only, with read-only controls
+  (see [Controls in a static Storybook](#static-controls)).
 - Element caching (the `cache` option of `element()`) and plugin Elements (`Plugin.name`) are not
   supported.
 - The framework uses the Vite builder only (no Webpack).
