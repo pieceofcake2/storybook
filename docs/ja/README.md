@@ -50,6 +50,8 @@ Content-Type: application/json
 同じように、アプリケーションの View クラスとヘルパーで Element を描画し、HTML の断片を返します。プレビューは
 それを canvas に入れ、含まれるスクリプトを実行します。
 
+![Storybook に表示したテスト用のアプリケーションのストーリーと、Controls の args](../img/story-controls.png)
+
 送るのは (許可したディレクトリの下の) Element の名前と args だけです。PHP のテンプレートはサンドボックスで
 実行できないため、テンプレートやコードをクライアントから受け取ることはありません。複数の Element を
 組み合わせるストーリーは、サーバー側のテンプレートを名前で選びます ([ストーリー用のテンプレート](#story-templates)
@@ -368,6 +370,8 @@ export default {
 `@storybook/addon-docs` を使うと、「Show code」にストーリーを描画する PHP のコード
 (`<?= $this->element('components/button', ['label' => '応募する', ...]) ?>` など) が表示されます。
 
+![「Show code」で PHP のコードを表示したコンポーネントの Docs のページ](../img/docs-show-code.png)
+
 ### エラー
 
 アプリケーションがエラーを返すと、ストーリーは失敗として扱われ、canvas にエラーのページが表示されます。
@@ -518,6 +522,8 @@ args") が表示されます。args をリセットすると、ストーリー�
 
 args は、ストーリーを読み込むたびに同じである必要があります。`new Date()` のような arg は事前描画のときと
 公開した Storybook とで変わるため、そのストーリーには案内が表示されます。
+
+![Controls で args を変えたときに静的な Storybook が表示する案内](../img/static-changed-args.png)
 
 ### 公開
 

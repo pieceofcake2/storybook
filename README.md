@@ -32,6 +32,10 @@ It consists of a CakePHP plugin, which provides the render endpoint (`POST /_sto
 and a Storybook framework that uses Vite (`@pieceofcake2/storybook`, included in the Composer
 package).
 
+![A story in Storybook, with its args in Controls](docs/img/story-controls.png)
+
+![The Docs page of a component, with the PHP code shown by "Show code"](docs/img/docs-show-code.png)
+
 > [!IMPORTANT]
 > This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
 > and never install it in production. The render endpoint works only in debug mode.

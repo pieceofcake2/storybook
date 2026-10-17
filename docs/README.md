@@ -52,6 +52,8 @@ The application renders the Element with its View class and helpers, as
 `$this->element('components/button', ['label' => 'Apply', 'url' => '/jobs/1'])` would, and
 returns the HTML fragment. The preview puts it in the canvas and runs its scripts.
 
+![A story of the test application in Storybook, with its args in Controls](img/story-controls.png)
+
 Only the name of an Element (under the allowed directories) and the args are sent: templates and
 code are never received from the client, since PHP templates cannot be sandboxed. Stories that
 combine several Elements use templates on the server, selected by name (see
@@ -375,6 +377,8 @@ export default {
 With `@storybook/addon-docs`, "Show code" shows the PHP code that renders the story, e.g.
 `<?= $this->element('components/button', ['label' => 'Apply', ...]) ?>`.
 
+![The Docs page of a component, with the PHP code shown by "Show code"](img/docs-show-code.png)
+
 ### Errors
 
 When the application returns an error, the story is marked as failed and the error page is shown
@@ -528,6 +532,8 @@ functions and actions (`data-storybook-callbacks`) work, and "Show code" shows t
 
 The args must be the same every time the stories are loaded: an arg such as `new Date()` differs
 between the pre-rendering and the published Storybook, so the story shows the notice.
+
+![The notice shown by a static Storybook when the args are changed in Controls](img/static-changed-args.png)
 
 ### Deployment
 
