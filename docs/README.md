@@ -19,7 +19,7 @@ It consists of a CakePHP plugin, which provides the render endpoint, and a Story
 - [Writing Stories](#writing-stories)
 - [Running Storybook Locally](#running-storybook-locally)
 - [The Vite Config of the Application](#vite-config)
-- [Static Build and Deployment](#static-build)
+- [Publishing a Static Storybook](#static-build)
 - [Keeping Storybook out of Production](#production)
 - [Security](#security)
 - [Testing Stories](#testing-stories)
@@ -59,8 +59,9 @@ combine several Elements use templates on the server, selected by name (see
 [Story templates](#story-templates)).
 
 In `storybook dev`, the Vite dev server of Storybook proxies `/_storybook/render` to the
-application. A static build (`storybook build`) is deployed on the same origin as the
-application, and sends the requests to `/_storybook/render` of its origin.
+application, which runs in debug mode. To publish Storybook, the stories are pre-rendered into a
+static build, which does not need the application (see
+[Publishing a Static Storybook](#static-build)).
 
 <a id="requirements"></a>
 
@@ -88,9 +89,9 @@ application, and sends the requests to `/_storybook/render` of its origin.
    | Legacy (`app/Config/`, `app/Plugin/`) | `"app/Plugin/{$name}/": ["type:cakephp-plugin"]` | `app/Plugin/Storybook/` |
 
    Do not install it as a regular dependency: production is deployed with
-   `composer install --no-dev`, so that the plugin is not installed there. To publish a static
-   build to a development environment deployed with `--no-dev`, add the package in the build step
-   of that environment only (see [Static Build and Deployment](#static-build)).
+   `composer install --no-dev`, so that the plugin is not installed there. A published Storybook
+   is pre-rendered where the dev dependencies are installed (e.g. in CI), so the environment where
+   it is deployed does not need the plugin (see [Publishing a Static Storybook](#static-build)).
 
 2. **Load the plugin with its routes** in `config/bootstrap.php` (legacy layout:
    `app/Config/bootstrap.php`), only when it is installed:
@@ -414,7 +415,8 @@ You can add scripts to your `package.json`:
 {
     "scripts": {
         "storybook": "storybook dev -p 6006",
-        "build-storybook": "storybook build"
+        "build-storybook": "storybook build",
+        "prerender-storybook": "storybook-cakephp prerender --server http://127.0.0.1:8765"
     }
 }
 ```
@@ -450,45 +452,116 @@ options.
 
 <a id="static-build"></a>
 
-## Static Build and Deployment
+## Publishing a Static Storybook
 
-`storybook build` writes a static Storybook (`storybook-static/` by default). Deploy it on the same
-origin as the application, under any path (e.g. https://dev.example.com/storybook/): it sends the
-render requests to `/_storybook/render` of its origin (not of its own path), and the HTML of the
-Elements refers to the images and assets of the application on the same origin. The application
-of that environment must have the plugin installed and loaded.
+Stories are developed with `storybook dev` and the application running in debug mode (see
+[Running Storybook Locally](#running-storybook-locally)). To publish Storybook, e.g. on a
+development or staging server that runs with `debug` 0 and without this plugin, pre-render the
+stories into a static build: the published Storybook loads the HTML of the stories from its own
+files, and never requests the application.
 
-For example, to publish Storybook only in the development environment, deployed with
-`composer install --no-dev` like production:
+Build Storybook, and pre-render it with the application running in debug mode (e.g. in CI, where
+the dev dependencies are installed):
 
-1. In the build step of the development environment only, add this package after
-   `composer install`, at the version of `composer.lock`:
+```bash
+# The CakePHP application in debug mode, with the dev dependencies
+php -S 127.0.0.1:8765 -t webroot webroot/index.php &
 
-   ```bash
-   composer install --no-dev --no-interaction
-   composer require "pieceofcake2/storybook:$(jq -r '.["packages-dev"][] | select(.name == "pieceofcake2/storybook") | .version' composer.lock)" \
-       --update-no-dev --no-interaction
-   ```
+npx storybook build -o storybook-static
+npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+```
 
-   `composer require` moves the package to `require` in the `composer.json` and `composer.lock` of
-   the build (do not commit them), and installs it with its dependencies (e.g.
-   `composer/installers`) at their locked versions. The other packages keep their locked
-   versions, and the other dev dependencies are not installed. It regenerates the autoloader: pass
-   the same options as to `composer install` (e.g. `--optimize-autoloader` or
-   `--classmap-authoritative`).
+`storybook-cakephp prerender` (a command of the framework) serves the build on a local port, and
+opens every story of its `index.json` in a headless Chrome. It forwards the render requests of the
+preview to the application (with the `X-Storybook-Proxy: true` header, as `storybook dev` does),
+and writes the responses into `<dir>/cakephp-prerendered/<story id>.json`. Finally, it adds
+`<meta name="storybook-cakephp-prerendered">` to `<dir>/iframe.html`: with it, the preview loads
+the stories from `cakephp-prerendered/` relative to `iframe.html`, so the build works under any
+path (e.g. https://dev.example.com/storybook/).
 
-   The application loads the plugin when it is installed (see [Installation](#installation)), so
-   the same `config/bootstrap.php` is used in production and in the development environment.
+Since the stories are rendered by the built preview, the pre-rendered HTML is made from the args
+exactly as the build computes them: the args of the meta and of the story, the render functions,
+the args set by play functions, and the URLs of the assets imported by the stories
+(`import photo from './photo.jpg'`), which point into the build. The URL where the build is
+served is stored as a placeholder, and replaced with the URL of the deployed Storybook.
 
-2. Build Storybook in the deployment of the development environment, and serve it under
-   `/storybook/`: write it into the webroot (`npx storybook build -o webroot/storybook`, and add
-   `webroot/storybook/` to `.gitignore`), or upload it to the storage or CDN that serves the static
-   files of the site, on the same host.
+### Requirements
 
-3. Do not add the package, or build or deploy Storybook, in production (see below).
+- [`playwright-core`](https://www.npmjs.com/package/playwright-core), an optional peer dependency
+  of the framework, which downloads no browser: `npm install --save-dev playwright-core`
+- Chrome or Chromium, set by `--browser`:
 
-If the development environment uses Basic authentication, the browser sends the credentials with
-the render requests, as they are on the same origin.
+  | `--browser` | Browser |
+  | --- | --- |
+  | `chrome` (default) | The installed Google Chrome (GitHub-hosted runners have it) |
+  | `msedge`, `chrome-beta`, ... | Other installed browsers ([channels](https://playwright.dev/docs/browsers) of Playwright) |
+  | `chromium` | The Chromium of Playwright (`npx playwright install chromium`) |
+  | A path (e.g. `/usr/bin/chromium`) | A Chrome or Chromium executable |
+
+  The `STORYBOOK_CAKEPHP_BROWSER` environment variable sets the default.
+
+### Options
+
+| Option | Description |
+| --- | --- |
+| `--server <url>` | URL of the CakePHP application, running in debug mode (required) |
+| `--dir <dir>` | Directory of the Storybook build (default: `storybook-static`) |
+| `--browser <browser>` | Browser (default: `chrome`, see above) |
+| `--concurrency <n>` | Number of stories rendered at the same time (default: 4) |
+| `--timeout <ms>` | Timeout of a story (default: 30000) |
+
+The command fails (exit status 1) when a story cannot be pre-rendered (e.g. it times out, it
+throws an exception, or the render endpoint is not available because the application is not in
+debug mode). Stories for which the application returns an error are pre-rendered with the error
+page, as `storybook dev` shows them, and listed as warnings.
+
+Run `storybook-cakephp prerender` after each `storybook build`, which replaces the directory. If
+`npx storybook-cakephp` is not found after updating the plugin, run `npm install` again.
+
+<a id="static-controls"></a>
+
+### Controls in a static Storybook
+
+The stories are pre-rendered with their own args, and a static Storybook cannot render other args.
+When the args are changed in Controls, the canvas shows a notice ("This story cannot be rendered
+with these args") instead of the story. Resetting the args shows the story again. The rest works as
+in `storybook dev`: the stories and the Docs show the pre-rendered HTML, its scripts run, play
+functions and actions (`data-storybook-callbacks`) work, and "Show code" shows the PHP code.
+
+The args must be the same every time the stories are loaded: an arg such as `new Date()` differs
+between the pre-rendering and the published Storybook, so the story shows the notice.
+
+### Deployment
+
+The pre-rendered build is static files: deploy it with the other static files of the environment,
+e.g. under `/storybook/` of the development server (`npx storybook build -o webroot/storybook`,
+with `webroot/storybook/` in `.gitignore`), or to the storage or CDN that serves the site. The
+plugin is not needed there, so the environment can be deployed with `composer install --no-dev`
+like production. The HTML of the Elements refers to the images and assets of the application
+(e.g. `/img/logo.svg`) by their URLs: deploy Storybook on the same host as the application, so
+that they are found.
+
+For example, in GitHub Actions:
+
+```yaml
+- run: composer install --no-interaction
+- run: npm ci
+- name: Build and pre-render Storybook
+  run: |
+    php -S 127.0.0.1:8765 -t webroot webroot/index.php &
+    npx storybook build -o storybook-static
+    npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+  env:
+    APP_DEBUG: 1 # However your application turns on debug mode
+# Then upload storybook-static/ to /storybook/ of the development environment
+```
+
+The application only has to render the Elements of the stories in CI: set up what they need (e.g.
+a database, if the helpers or the Elements read from it).
+
+A build that is not pre-rendered sends the render requests to `/_storybook/render` of its origin.
+It works only on the same origin as an application in debug mode with the plugin (e.g. served by
+the application locally).
 
 <a id="production"></a>
 
@@ -499,11 +572,11 @@ not meant for production. It works only in debug mode, and the plugin is a dev d
 is not installed in production.
 
 - Install the plugin with `composer require --dev`, and deploy production with
-  `composer install --no-dev`. Do not add the package in the build of production (see
-  [Static Build and Deployment](#static-build)). Check that `POST /_storybook/render/x` returns 404
-  there.
-- Do not deploy the static build to production, or exclude it from the files deployed to
-  production (e.g. `webroot/storybook/`).
+  `composer install --no-dev` and debug mode off. Check that `POST /_storybook/render/x` returns
+  404 there.
+- Publish Storybook as a pre-rendered build (see [Publishing a Static Storybook](#static-build)).
+  Do not deploy it to production, or exclude it from the files deployed to production (e.g.
+  `webroot/storybook/`).
 
 <a id="security"></a>
 
@@ -552,8 +625,9 @@ export default defineConfig({
 });
 ```
 
-The repository of this package runs the stories of its test application in this way, and checks
-every story of the static build served by the application (`tests/test_app/bin/e2e.sh`).
+The repository of this package runs the stories of its test application in this way. It also
+checks every story of the build served by the application, and of the pre-rendered build served
+as static files with the application stopped (`tests/test_app/bin/e2e.sh`).
 
 <a id="differences"></a>
 
@@ -580,6 +654,8 @@ every story of the static build served by the application (`tests/test_app/bin/e
   template that builds them, or an Element that accepts arrays.
 - The request is a POST request to `/_storybook/render`, so Elements that depend on the current
   request (URL, query, session, logged-in user) render with that request.
+- A pre-rendered Storybook shows the stories with their own args only (see
+  [Controls in a static Storybook](#static-controls)).
 - Element caching (the `cache` option of `element()`) and plugin Elements (`Plugin.name`) are not
   supported.
 - The framework uses the Vite builder only (no Webpack).

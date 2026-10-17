@@ -13,6 +13,9 @@ It is not published to npm: install it from the Composer package.
 }
 ```
 
+It also provides the `storybook-cakephp prerender` command, which pre-renders the stories of a
+Storybook build with the application, so that the build can be published as static files.
+
 See the [documentation](https://github.com/pieceofcake2/storybook/blob/1.x/docs/README.md).
 
 ## Development

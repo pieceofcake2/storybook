@@ -57,9 +57,18 @@ npm install --save-dev storybook@^10 vite @pieceofcake2/storybook@file:plugins/S
 ```
 
 Then load the plugin with its routes when it is installed, and configure `.storybook/main.ts`. See
-[Installation](docs/README.md#installation). To publish a static build to a development
-environment deployed with `composer install --no-dev`, add the package in the build step of that
-environment only. See [Static Build and Deployment](docs/README.md#static-build).
+[Installation](docs/README.md#installation).
+
+Develop the stories with `storybook dev` and the application running in debug mode. To publish
+Storybook (e.g. on a development server running with debug 0 and without the plugin), pre-render
+the stories into a static build, which does not request the application:
+
+```bash
+npx storybook build -o storybook-static
+npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
+```
+
+See [Publishing a Static Storybook](docs/README.md#static-build).
 
 ## Security
 

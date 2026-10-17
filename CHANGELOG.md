@@ -7,6 +7,15 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- `storybook-cakephp prerender --server <url> [--dir storybook-static]` pre-renders all the stories
+  of a Storybook build with the application (running in debug mode), so that the build is static:
+  it loads the pre-rendered HTML relative to its own path, and never requests the application. The
+  stories are rendered by the built preview in a headless Chrome (`playwright-core`, an optional
+  peer dependency, with an installed browser), so the args are those of the build, including the
+  URLs of the imported assets. Changed args in Controls show a notice in the canvas.
+
 ### Changed
 
 - The render endpoint works only in debug mode (`debug` >= 1): the route is not connected with
