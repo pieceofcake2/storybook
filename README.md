@@ -9,10 +9,10 @@
 [![Codecov](https://img.shields.io/codecov/c/gh/pieceofcake2/storybook?label=Coverage)](https://codecov.io/gh/pieceofcake2/storybook)
 
 pieceofcake2/storybook renders the Elements of a CakePHP 2 application in
-[Storybook](https://storybook.js.org/), in the same way as
-[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) renders Twig components.
-A story names an Element and its args, Storybook sends them to the application, and the
-application renders the Element with its own View class and helpers.
+[Storybook](https://storybook.js.org/). It is inspired by
+[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle). A story names an Element
+and its args, Storybook sends them to the application, and the application renders the Element
+with its own View class and helpers.
 
 ```ts
 // stories/components/button.stories.ts
@@ -88,7 +88,7 @@ is committed, since applications install it from the Composer package without bu
 ## Origin
 
 This package was created by [pieceofcake2](https://github.com/pieceofcake2), which also maintains
-it. Its design follows [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle), and
+it. It is inspired by [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle), and
 parts of the Storybook framework are adapted from it (MIT License, Copyright (c) 2024 SensioLabs).
 See [storybook/NOTICE.md](storybook/NOTICE.md).
 

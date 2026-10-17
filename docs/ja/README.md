@@ -1,9 +1,9 @@
 # Storybook ドキュメント
 
 pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [Storybook](https://storybook.js.org/) で
-描画します。[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) が Twig コンポーネントを
-描画するのと同じ仕組みです。描画のエンドポイントを提供する CakePHP プラグインと、Composer パッケージに
-含まれる Storybook のフレームワーク (`@pieceofcake2/storybook`、Vite ビルダー) からなります。
+描画します。[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) に着想を得ています。描画の
+エンドポイントを提供する CakePHP プラグインと、Composer パッケージに含まれる Storybook のフレームワーク
+(`@pieceofcake2/storybook`、Vite ビルダー) からなります。
 
 > [!IMPORTANT]
 > このプラグインは開発専用です。dev の依存としてインストールし (`composer require --dev`)、本番には
@@ -22,7 +22,6 @@ pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [
 - [本番に入れない](#production)
 - [セキュリティ](#security)
 - [ストーリーのテスト](#testing-stories)
-- [Storybook for Symfony との違い](#differences)
 - [制限](#limitations)
 
 <a id="how-it-works"></a>
@@ -333,7 +332,7 @@ export const Large: Story = {
 
 ### アクション
 
-関数の args (`fn()` や `action` の argTypes) はサーバーに送りません。Storybook for Symfony と同じく、
+関数の args (`fn()` や `action` の argTypes) はサーバーに送りません。代わりに、
 `data-storybook-callbacks` 属性に arg の名前を含む要素のイベントに結び付けます。
 `data-storybook-callbacks="increment"` なら、その要素の `increment` イベントで `increment` の arg が
 呼ばれます。
@@ -567,8 +566,7 @@ debug モードのアプリケーションと同じオリジン (ローカルで
 ## セキュリティ
 
 - 受け取るのは Element またはストーリー用のテンプレートの名前と、args だけです。PHP のテンプレートは
-  サンドボックスで実行できないため、テンプレートやコードをクライアントから受け取ることはありません
-  (Storybook for Symfony は、クライアントが送った Twig のテンプレートをサンドボックスでコンパイルします)。
+  サンドボックスで実行できないため、テンプレートやコードをクライアントから受け取ることはありません。
 - 名前は `[a-z0-9_/-]+` の形に限り、`..`、先頭の `/`、プラグインの接頭辞、拡張子は使えません。Element は
   許可したディレクトリ (`Storybook.elements`) の下、テンプレートはテンプレートのディレクトリ
   (`Storybook.templates`。false で無効にできる) の下に限ります。
@@ -611,23 +609,6 @@ export default defineConfig({
 このパッケージのリポジトリでは、テスト用のアプリケーションのストーリーをこの方法で実行しています。さらに、
 アプリケーションが配信するビルドと、アプリケーションを止めて静的なファイルとして配信する事前描画した
 ビルドで、すべてのストーリーを確かめています (`tests/test_app/bin/e2e.sh`)。
-
-<a id="differences"></a>
-
-## Storybook for Symfony との違い
-
-| | Storybook for Symfony | pieceofcake2/storybook |
-| --- | --- | --- |
-| クライアントが送るもの | Twig のテンプレートのソース (サンドボックスでコンパイル) と args | Element (またはサーバー側のストーリー用のテンプレート) の名前と args |
-| ストーリーでコンポーネントを組み合わせる | ストーリーの中の Twig のテンプレート | サーバー側のストーリー用のテンプレート (`templates/Stories/`) |
-| プレビューの `<head>` | `storybook:generate-preview` コマンドで生成 | `.storybook/preview.ts` で Vite によりアセットを import (と `preview-head.html`) |
-| アセット | AssetMapper または Webpack Encore | Vite (アプリケーションの Vite の設定) |
-| ビルダー | Webpack と Vite | Vite |
-| args processor、コンポーネントのモック、Live Components | 対応 | 未対応 |
-| テンプレートの監視 | `additionalWatchPaths` | `watchPaths` |
-| 本番 | `prod` 環境で無効 | インストールしない (dev の依存、`composer install --no-dev`) |
-| 静的ビルド | アプリケーションへのリバースプロキシの後ろ | アプリケーションと同じオリジン |
-| npm パッケージ | Bundle への `file:` の依存 | プラグインへの `file:` の依存 |
 
 <a id="limitations"></a>
 

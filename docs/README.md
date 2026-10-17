@@ -1,9 +1,9 @@
 # Storybook Documentation
 
 pieceofcake2/storybook renders the Elements of a CakePHP 2 application in
-[Storybook](https://storybook.js.org/), in the same way as
-[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle) renders Twig components.
-It consists of a CakePHP plugin, which provides the render endpoint, and a Storybook framework
+[Storybook](https://storybook.js.org/). It is inspired by
+[Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle). It consists of a CakePHP
+plugin, which provides the render endpoint, and a Storybook framework
 (`@pieceofcake2/storybook`, Vite builder), which is included in the Composer package.
 
 > [!IMPORTANT]
@@ -23,7 +23,6 @@ It consists of a CakePHP plugin, which provides the render endpoint, and a Story
 - [Keeping Storybook out of Production](#production)
 - [Security](#security)
 - [Testing Stories](#testing-stories)
-- [Differences from Storybook for Symfony](#differences)
 - [Limitations](#limitations)
 
 <a id="how-it-works"></a>
@@ -341,9 +340,8 @@ export const Large: Story = {
 
 ### Actions
 
-Function args (e.g. `fn()` or the `action` argTypes) are not sent to the server. As in Storybook
-for Symfony, they are bound to the events of the elements whose `data-storybook-callbacks`
-attribute contains the name of the arg: with `data-storybook-callbacks="increment"`, the
+Function args (e.g. `fn()` or the `action` argTypes) are not sent to the server. They are bound to
+the events of the elements whose `data-storybook-callbacks` attribute contains the name of the arg: with `data-storybook-callbacks="increment"`, the
 `increment` event of the element calls the `increment` arg.
 
 ```php
@@ -583,8 +581,7 @@ is not installed in production.
 ## Security
 
 - Only the name of an Element or of a story template, and the args are received. Templates and
-  code are never received from the client, since PHP templates cannot be sandboxed (Storybook for
-  Symfony compiles the Twig template sent by the client in a sandbox instead).
+  code are never received from the client, since PHP templates cannot be sandboxed.
 - Names must match `[a-z0-9_/-]+` and cannot contain `..`, a leading `/`, a plugin prefix or an
   extension. Elements must be under the allowed directories (`Storybook.elements`), and templates
   under the templates directory (`Storybook.templates`, which can be disabled with false).
@@ -628,23 +625,6 @@ export default defineConfig({
 The repository of this package runs the stories of its test application in this way. It also
 checks every story of the build served by the application, and of the pre-rendered build served
 as static files with the application stopped (`tests/test_app/bin/e2e.sh`).
-
-<a id="differences"></a>
-
-## Differences from Storybook for Symfony
-
-| | Storybook for Symfony | pieceofcake2/storybook |
-| --- | --- | --- |
-| What the client sends | The source of a Twig template (compiled in a sandbox) and the args | The name of an Element (or of a story template on the server) and the args |
-| Combining components in a story | A Twig template in the story | A story template on the server (`templates/Stories/`) |
-| Preview `<head>` | Rendered by the `storybook:generate-preview` command | `.storybook/preview.ts` imports the assets with Vite (and `preview-head.html`) |
-| Assets | AssetMapper or Webpack Encore | Vite (the Vite config of the application) |
-| Builders | Webpack and Vite | Vite |
-| Args processors, component mocks, Live Components | Supported | Not supported |
-| Watching templates | `additionalWatchPaths` | `watchPaths` |
-| Production | Disabled in the `prod` environment | Not installed (dev dependency, `composer install --no-dev`) |
-| Static build | Behind a reverse proxy to the application | On the same origin as the application |
-| npm package | `file:` dependency on the bundle | `file:` dependency on the plugin |
 
 <a id="limitations"></a>
 
