@@ -9,3 +9,5 @@ node_modules/
 /tests/test_app/storybook-static/
 /tests/test_app/webroot/storybook/
 /tests/test_app/tmp/
+/tests/test_app/webroot/build/
+/tests/test_app/webroot/hot
