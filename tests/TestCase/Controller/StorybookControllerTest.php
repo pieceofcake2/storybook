@@ -14,15 +14,7 @@ class StorybookControllerTest extends ControllerTestCase
         App::build([
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
         ], App::PREPEND);
-        Configure::write('Storybook', ['enabled' => true, 'helpers' => ['Html']]);
-        $this->reloadRoutes();
-    }
-
-    /**
-     * Reloads the routes, which are connected depending on `Storybook.enabled`
-     */
-    private function reloadRoutes(): void
-    {
+        Configure::write('Storybook', ['helpers' => ['Html']]);
         Router::reload();
         require CONFIG . 'routes.php';
     }
@@ -63,7 +55,7 @@ class StorybookControllerTest extends ControllerTestCase
         $this->assertStringContainsString('class="storybook-cakephp-error"', $html);
     }
 
-    public function testRouteIsConnectedWhenEnabled(): void
+    public function testRouteIsConnected(): void
     {
         $params = Router::parse('/_storybook/render/components-button--primary');
 
@@ -72,35 +64,18 @@ class StorybookControllerTest extends ControllerTestCase
         $this->assertSame(['components-button--primary'], $params['pass']);
     }
 
-    public function testRouteIsNotConnectedWhenDisabled(): void
+    public function testRouteIsConnectedWithoutConfiguration(): void
     {
-        Configure::write('Storybook.enabled', false);
-        $this->reloadRoutes();
+        Configure::delete('Storybook');
+        Router::reload();
+        require CONFIG . 'routes.php';
 
-        $this->assertNull(Router::parse('/_storybook/render/components-button--primary')['plugin']);
+        $this->assertSame('storybook', Router::parse('/_storybook/render/components-button--primary')['plugin']);
     }
 
-    public function testRenderPathIsNotFoundWhenDisabled(): void
+    public function testRouteRejectsInvalidStoryIds(): void
     {
-        Configure::write('Storybook.enabled', false);
-        $this->reloadRoutes();
-
-        $this->expectException(NotFoundException::class);
-
-        $this->renderStory(['element' => 'components/button', 'args' => ['label' => 'A', 'url' => '/']]);
-    }
-
-    public function testPluginRouteIsNotFoundWhenDisabled(): void
-    {
-        Configure::write('Storybook.enabled', false);
-        $this->reloadRoutes();
-
-        $this->expectException(NotFoundException::class);
-
-        $this->testAction('/storybook/storybook/story/x', [
-            'data' => (string)json_encode(['element' => 'components/button', 'args' => ['label' => 'A', 'url' => '/']]),
-            'return' => 'contents',
-        ]);
+        $this->assertNull(Router::parse('/_storybook/render/components.button')['plugin']);
     }
 
     public function testRenderElement(): void

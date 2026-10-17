@@ -47,17 +47,12 @@ class StorybookController extends Controller
     public $theme = null;
 
     /**
-     * Returns 404 unless Storybook is enabled, and sets up the View of the application
+     * Sets up the View of the application
      *
      * @return void
-     * @throws NotFoundException
      */
     public function beforeFilter()
     {
-        if (!StorybookRenderer::enabled()) {
-            throw new NotFoundException();
-        }
-
         $settings = StorybookRenderer::viewSettings();
         $this->viewClass = $settings['viewClass'];
         $this->helpers = $settings['helpers'];

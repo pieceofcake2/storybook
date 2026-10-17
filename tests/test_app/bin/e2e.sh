@@ -16,7 +16,7 @@ PHP="${PHP:-php}"
 
 cd "${APP_DIR}"
 
-STORYBOOK_ENABLED=true "${PHP}" -S "127.0.0.1:${PORT}" -t webroot webroot/index.php 2> >(grep -v -E "(Accepted|Closing)$" 1>&2) &
+"${PHP}" -S "127.0.0.1:${PORT}" -t webroot webroot/index.php 2> >(grep -v -E "(Accepted|Closing)$" 1>&2) &
 SERVER_PID=$!
 trap 'kill "${SERVER_PID}" 2>/dev/null || true' EXIT
 

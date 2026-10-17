@@ -5,9 +5,7 @@
 
 Cache::config('default', ['engine' => 'File']);
 
-// Enabled only when STORYBOOK_ENABLED is true (e.g. in the development environment)
 Configure::write('Storybook', [
-    'enabled' => filter_var(getenv('STORYBOOK_ENABLED'), FILTER_VALIDATE_BOOLEAN),
     'viewClass' => 'TestApp',
     'helpers' => ['Html'],
 ]);

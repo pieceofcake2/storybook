@@ -38,38 +38,6 @@ class StorybookRendererTest extends CakeTestCase
         return new StorybookRenderer($this->View, $settings);
     }
 
-    public function testIsDisabledByDefault(): void
-    {
-        $this->assertFalse(StorybookRenderer::enabled());
-    }
-
-    /**
-     * @return array<string, array{0: mixed, 1: bool}>
-     */
-    public static function enabledProvider(): array
-    {
-        return [
-            'true' => [true, true],
-            'string true (from env)' => ['true', true],
-            'string 1' => ['1', true],
-            'false' => [false, false],
-            'string false' => ['false', false],
-            'empty string (unset env)' => ['', false],
-            'null' => [null, false],
-        ];
-    }
-
-    /**
-     * @dataProvider enabledProvider
-     * @param mixed $value
-     */
-    public function testEnabled($value, bool $expected): void
-    {
-        Configure::write('Storybook.enabled', $value);
-
-        $this->assertSame($expected, StorybookRenderer::enabled());
-    }
-
     public function testViewSettingsDefaultToAppController(): void
     {
         $expected = get_class_vars('AppController');

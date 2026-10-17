@@ -24,7 +24,6 @@ class StorybookRenderer
     /**
      * Default settings, overridden by the `Storybook` key of Configure
      *
-     * - `enabled`: Whether the render endpoint is enabled. Disabled by default
      * - `elements`: Element directories that can be rendered (e.g. `components` for `Elements/components/`)
      * - `templates`: Directory of the story templates under the view path (`templates/Stories/`), or false to disable them
      * - `viewClass`, `helpers`, `ext`, `theme`: View settings. Defaults to those of `AppController`
@@ -33,7 +32,6 @@ class StorybookRenderer
      * @var array<string, mixed>
      */
     public const DEFAULTS = [
-        'enabled' => false,
         'elements' => ['components'],
         'templates' => 'Stories',
         'viewClass' => null,
@@ -53,16 +51,6 @@ class StorybookRenderer
         $settings = Configure::read('Storybook');
 
         return array_merge(static::DEFAULTS, is_array($settings) ? $settings : []);
-    }
-
-    /**
-     * Returns whether the render endpoint is enabled
-     *
-     * @return bool
-     */
-    public static function enabled(): bool
-    {
-        return filter_var(static::settings()['enabled'], FILTER_VALIDATE_BOOLEAN);
     }
 
     /**
