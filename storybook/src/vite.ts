@@ -1,5 +1,7 @@
+import { resolve, sep } from 'node:path';
+
 import { withoutVitePlugins } from '@storybook/builder-vite';
-import type { InlineConfig, ProxyOptions } from 'vite';
+import type { InlineConfig, Plugin, ProxyOptions } from 'vite';
 
 import type { FrameworkOptions } from './types.js';
 
@@ -46,9 +48,35 @@ export const createProxyConfig = (
 };
 
 /**
+ * Returns a Vite plugin that reloads the page when a file under the watched paths (e.g. the
+ * templates of the Elements) changes in `storybook dev`.
+ */
+export const watchPathsPlugin = (paths: string[], root: string = process.cwd()): Plugin => {
+    const watched = paths.map((path) => resolve(root, path));
+    const isWatched = (file: string): boolean =>
+        watched.some((path) => file === path || file.startsWith(`${path}${sep}`));
+
+    return {
+        name: 'storybook-cakephp-watch-paths',
+        apply: 'serve',
+        configureServer(server) {
+            server.watcher.add(watched);
+            const reload = (file: string): void => {
+                if (isWatched(resolve(file))) {
+                    server.ws.send({ type: 'full-reload' });
+                }
+            };
+            server.watcher.on('change', reload);
+            server.watcher.on('add', reload);
+            server.watcher.on('unlink', reload);
+        },
+    };
+};
+
+/**
  * Adapts the Vite config (the application's config merged by `@storybook/builder-vite`) to
- * Storybook: removes the plugins that must not run in Storybook and adds the proxy to the CakePHP
- * application.
+ * Storybook: removes the plugins that must not run in Storybook, adds the proxy to the CakePHP
+ * application and reloads the stories when the watched paths change.
  *
  * `@storybook/builder-vite` already replaces `base` with `./`, drops `build` (except `target`) and,
  * in `storybook dev`, replaces `server` (`origin`, `port`, `https`, ...) with its own settings.
@@ -59,10 +87,12 @@ export const cakephpViteFinal = async (
     configType?: string
 ): Promise<InlineConfig> => {
     const excluded = options.excludeVitePlugins ?? DEFAULT_EXCLUDED_VITE_PLUGINS;
+    const plugins = excluded.length > 0 ? await withoutVitePlugins(config.plugins, excluded) : (config.plugins ?? []);
+    const watchPaths = options.watchPaths ?? [];
 
     return {
         ...config,
-        plugins: excluded.length > 0 ? await withoutVitePlugins(config.plugins, excluded) : config.plugins,
+        plugins: watchPaths.length > 0 ? [...plugins, watchPathsPlugin(watchPaths, config.root)] : plugins,
         server: {
             ...config.server,
             proxy: {

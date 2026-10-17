@@ -1,7 +1,9 @@
-import type { Plugin } from 'vite';
-import { describe, expect, it } from 'vitest';
+import { resolve } from 'node:path';
 
-import { cakephpViteFinal, createProxyConfig, RENDER_PATH } from '../src/vite.js';
+import type { Plugin, ViteDevServer } from 'vite';
+import { describe, expect, it, vi } from 'vitest';
+
+import { cakephpViteFinal, createProxyConfig, RENDER_PATH, watchPathsPlugin } from '../src/vite.js';
 
 const plugin = (name: string): Plugin => ({ name });
 
@@ -50,7 +52,13 @@ describe('cakephpViteFinal', () => {
     it('keeps the plugins with an empty list', async () => {
         const plugins = [plugin('hot-file')];
 
-        expect((await cakephpViteFinal({ plugins }, { excludeVitePlugins: [] })).plugins).toBe(plugins);
+        expect((await cakephpViteFinal({ plugins }, { excludeVitePlugins: [] })).plugins).toEqual(plugins);
+    });
+
+    it('adds the plugin of the watched paths', async () => {
+        const config = await cakephpViteFinal({ root: '/app', plugins: [plugin('app')] }, { watchPaths: ['templates'] });
+
+        expect((config.plugins as Plugin[]).map((p) => p.name)).toEqual(['app', 'storybook-cakephp-watch-paths']);
     });
 
     it('adds the proxy to the existing server settings', async () => {
@@ -61,5 +69,37 @@ describe('cakephpViteFinal', () => {
 
         expect(config.server?.middlewareMode).toBe(true);
         expect(Object.keys(config.server?.proxy ?? {})).toEqual(['/api', RENDER_PATH, '/img']);
+    });
+});
+
+describe('watchPathsPlugin', () => {
+    const server = () => {
+        const handlers: Record<string, (file: string) => void> = {};
+        const mock = {
+            watcher: { add: vi.fn(), on: vi.fn((event: string, handler: (file: string) => void) => (handlers[event] = handler)) },
+            ws: { send: vi.fn() },
+        };
+
+        return { mock, handlers };
+    };
+
+    it('reloads the page when a watched file changes', () => {
+        const { mock, handlers } = server();
+        const configureServer = watchPathsPlugin(['templates', 'config/app.php'], '/app').configureServer as (server: ViteDevServer) => void;
+        configureServer(mock as unknown as ViteDevServer);
+
+        expect(mock.watcher.add).toHaveBeenCalledWith([resolve('/app/templates'), resolve('/app/config/app.php')]);
+
+        handlers.change?.(resolve('/app/templates/Elements/components/button.php'));
+        handlers.add?.(resolve('/app/config/app.php'));
+        handlers.change?.(resolve('/app/templates-other/x.php'));
+        handlers.unlink?.(resolve('/app/assets/app.ts'));
+
+        expect(mock.ws.send).toHaveBeenCalledTimes(2);
+        expect(mock.ws.send).toHaveBeenCalledWith({ type: 'full-reload' });
+    });
+
+    it('applies to storybook dev only', () => {
+        expect(watchPathsPlugin([]).apply).toBe('serve');
     });
 });

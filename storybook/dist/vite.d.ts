@@ -1,4 +1,4 @@
-import type { InlineConfig, ProxyOptions } from 'vite';
+import type { InlineConfig, Plugin, ProxyOptions } from 'vite';
 import type { FrameworkOptions } from './types.js';
 /**
  * Path of the render endpoint of the CakePHP application.
@@ -16,9 +16,14 @@ export declare const DEFAULT_EXCLUDED_VITE_PLUGINS: string[];
  */
 export declare const createProxyConfig: (options: Pick<FrameworkOptions, 'server' | 'proxyPaths'>, configType?: string) => Record<string, ProxyOptions>;
 /**
+ * Returns a Vite plugin that reloads the page when a file under the watched paths (e.g. the
+ * templates of the Elements) changes in `storybook dev`.
+ */
+export declare const watchPathsPlugin: (paths: string[], root?: string) => Plugin;
+/**
  * Adapts the Vite config (the application's config merged by `@storybook/builder-vite`) to
- * Storybook: removes the plugins that must not run in Storybook and adds the proxy to the CakePHP
- * application.
+ * Storybook: removes the plugins that must not run in Storybook, adds the proxy to the CakePHP
+ * application and reloads the stories when the watched paths change.
  *
  * `@storybook/builder-vite` already replaces `base` with `./`, drops `build` (except `target`) and,
  * in `storybook dev`, replaces `server` (`origin`, `port`, `https`, ...) with its own settings.

@@ -19,6 +19,12 @@ export type FrameworkOptions = {
      */
     proxyPaths?: string | string[];
     /**
+     * Files or directories (relative to the project root) whose changes reload the story in
+     * `storybook dev`, e.g. the templates (`['templates']`), since Vite does not know that the
+     * HTML depends on them.
+     */
+    watchPaths?: string[];
+    /**
      * Names of the Vite plugins of the application's Vite config to remove in Storybook (default:
      * `['hot-file']`, the plugin that writes the hot file of pieceofcake2/vite).
      */
