@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-10-18
+
+### Changed
+
+- In a pre-rendered (static) Storybook, "Show code" in Docs shows the pre-rendered HTML of the
+  story instead of the PHP code, since its args cannot be changed. `storybook dev` still shows the
+  PHP code.
+
 ## [1.1.0] - 2026-10-18
 
 ### Added
@@ -41,5 +49,6 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`excludeVitePlugins`), actions with `data-storybook-callbacks`, and the PHP code in Docs.
 - Static builds that work on the same origin as the application, under any path.
 
+[1.2.0]: https://github.com/pieceofcake2/storybook/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/pieceofcake2/storybook/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/pieceofcake2/storybook/releases/tag/v1.0.0

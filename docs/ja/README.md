@@ -370,7 +370,9 @@ export default {
 ### Docs
 
 `@storybook/addon-docs` を使うと、「Show code」にストーリーを描画する PHP のコード
-(`<?= $this->element('components/button', ['label' => '応募する', ...]) ?>` など) が表示されます。
+(`<?= $this->element('components/button', ['label' => '応募する', ...]) ?>` など) が表示されます。事前描画した
+(静的な) Storybook では、代わりに事前描画の HTML が表示されます ([静的な Storybook での Controls](#static-controls)
+を参照)。
 
 ![「Show code」で PHP のコードを表示したコンポーネントの Docs のページ](../img/docs-show-code.png)
 
@@ -520,7 +522,13 @@ npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-s
 Controls で args を変えると、canvas にはストーリーの代わりに案内 ("This story cannot be rendered with these
 args") が表示されます。args をリセットすると、ストーリーがまた表示されます。それ以外は `storybook dev` と
 同じように動きます: ストーリーと Docs は事前描画の HTML を表示し、そのスクリプトが動き、play 関数と
-アクション (`data-storybook-callbacks`) が動き、「Show code」には PHP のコードが表示されます。
+アクション (`data-storybook-callbacks`) が動きます。
+
+args は変えられないので、Docs の「Show code」には PHP のコードの代わりに、ストーリーの事前描画の HTML
+(アプリケーションが描画したまま。整形はしない) が表示されます。事前描画していない args では PHP のコードが
+表示されます。
+
+![「Show code」で事前描画の HTML を表示した、静的な Storybook の Docs のページ](../img/static-show-code.png)
 
 args は、ストーリーを読み込むたびに同じである必要があります。`new Date()` のような arg は事前描画のときと
 公開した Storybook とで変わるため、そのストーリーには案内が表示されます。
