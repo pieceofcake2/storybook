@@ -70,6 +70,8 @@ static build, which does not need the application (see
 
 - PHP 8.0+ and pieceofcake2/cakephp 2.12+
 - Node.js 20.19+, Storybook 10 and Vite 5 to 8
+- To publish a static Storybook: `playwright-core` and Chrome or Chromium (see
+  [Publishing a Static Storybook](#static-build))
 
 <a id="installation"></a>
 

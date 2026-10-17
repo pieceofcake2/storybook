@@ -67,6 +67,8 @@ Content-Type: application/json
 
 - PHP 8.0 以上、pieceofcake2/cakephp 2.12 以上
 - Node.js 20.19 以上、Storybook 10、Vite 5〜8
+- 静的な Storybook を公開するときは、`playwright-core` と Chrome か Chromium
+  ([静的な Storybook の公開](#static-build) を参照)
 
 <a id="installation"></a>
 
