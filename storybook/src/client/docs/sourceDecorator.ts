@@ -1,3 +1,4 @@
+// Adapted from Storybook for Symfony (MIT License, Copyright (c) 2024 SensioLabs). See NOTICE.md.
 import { SNIPPET_RENDERED, SourceType } from 'storybook/internal/docs-tools';
 import type { DecoratorFunction, StoryContext } from 'storybook/internal/types';
 import { addons, useEffect } from 'storybook/preview-api';

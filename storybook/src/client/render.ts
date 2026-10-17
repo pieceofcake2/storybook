@@ -1,3 +1,4 @@
+// Adapted from Storybook for Symfony (MIT License, Copyright (c) 2024 SensioLabs). See NOTICE.md.
 import { STORY_ERRORED, STORY_RENDER_PHASE_CHANGED } from 'storybook/internal/core-events';
 import type { ArgsStoryFn, RenderContext, StoryId } from 'storybook/internal/types';
 import { addons, simulatePageLoad } from 'storybook/preview-api';

@@ -1,3 +1,4 @@
+// Adapted from Storybook for Symfony (MIT License, Copyright (c) 2024 SensioLabs). See NOTICE.md.
 const ENTITIES: Record<string, string> = {
     amp: '&',
     lt: '<',

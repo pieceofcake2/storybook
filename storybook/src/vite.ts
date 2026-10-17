@@ -1,3 +1,4 @@
+// Adapted from Storybook for Symfony (MIT License, Copyright (c) 2024 SensioLabs). See NOTICE.md.
 import { resolve, sep } from 'node:path';
 
 import { withoutVitePlugins } from '@storybook/builder-vite';

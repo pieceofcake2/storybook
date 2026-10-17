@@ -72,8 +72,9 @@ is committed, since applications install it from the Composer package without bu
 ## Origin
 
 This package was created by [pieceofcake2](https://github.com/pieceofcake2), which also maintains
-it. Its design follows [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle)
-(MIT License), but it does not include its code.
+it. Its design follows [Storybook for Symfony](https://github.com/sensiolabs/StorybookBundle), and
+parts of the Storybook framework are adapted from it (MIT License, Copyright (c) 2024 SensioLabs).
+See [storybook/NOTICE.md](storybook/NOTICE.md).
 
 ## License
 
