@@ -270,9 +270,13 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const WithoutCrumbs: Story = {
-    args: { crumbs: null },
+    args: { crumbs: [] },
 };
 ```
+
+`StoryObj<typeof meta>` は、ストーリーの args を meta の args の型にします (Element の変数には型がないため、
+`argTypes` のものなど、ほかの args も使えます)。args の型で決めるときは `StoryObj<{ label: string }>` の
+ように書きます。
 
 Element とテンプレートの名前は `[a-z0-9_/-]+` (小文字、`..` なし) で、Element は許可したディレクトリ
 (既定は `components/`) の下にある必要があります。args は JSON で送ります: 文字列、数値、真偽値、`null`、

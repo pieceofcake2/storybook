@@ -276,9 +276,13 @@ type Story = StoryObj<typeof meta>;
 export const Default: Story = {};
 
 export const WithoutCrumbs: Story = {
-    args: { crumbs: null },
+    args: { crumbs: [] },
 };
 ```
+
+`StoryObj<typeof meta>` types the args of the stories with those of the meta (other args, e.g.
+those of `argTypes`, are also allowed, since the variables of an Element are not typed).
+`StoryObj<{ label: string }>` types them with an args type instead.
 
 Names of Elements and templates match `[a-z0-9_/-]+` (lowercase, no `..`), and Elements must be
 under one of the allowed directories (`components/` by default). Args are sent as JSON: strings,
