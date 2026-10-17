@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The render endpoint works only in debug mode (`debug` >= 1): the route is not connected with
+  `debug` 0, and the controller returns 404 if debug mode is turned off after the routes are
+  loaded. The messages and traces of server errors are always shown, since the endpoint runs in
+  debug mode.
+
 ## [1.0.0] - 2026-10-17
 
 ### Added
@@ -23,4 +32,5 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`excludeVitePlugins`), actions with `data-storybook-callbacks`, and the PHP code in Docs.
 - Static builds that work on the same origin as the application, under any path.
 
+[Unreleased]: https://github.com/pieceofcake2/storybook/compare/v1.0.0...HEAD
 [1.0.0]: https://github.com/pieceofcake2/storybook/releases/tag/v1.0.0

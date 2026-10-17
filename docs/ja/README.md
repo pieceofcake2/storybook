@@ -7,8 +7,9 @@ pieceofcake2/storybook は、CakePHP 2 アプリケーションの Element を [
 
 > [!IMPORTANT]
 > このプラグインは開発専用です。dev の依存としてインストールし (`composer require --dev`)、本番には
-> インストールしないでください。プラグインをインストールしてルートとあわせて読み込んだ環境では、描画の
-> エンドポイントが使えます。[本番に入れない](#production) を参照してください。
+> インストールしないでください。描画のエンドポイントは debug モード (`debug` が 1 以上) でだけ動くので、
+> Storybook を使うときはアプリケーションを debug モードで起動します。[本番に入れない](#production) を
+> 参照してください。
 
 - [仕組み](#how-it-works)
 - [要件](#requirements)
@@ -105,8 +106,9 @@ Content-Type: application/json
    `_cake_core_` のキャッシュがあればそこから読むため、デプロイのときは (プラグインを変えたときと同じく)
    キャッシュを消してください。
 
-   `'routes' => true` で読み込むと、描画のルート (`/_storybook/render/:story`) が追加されます。ほかに
-   切り替えはありません。
+   `'routes' => true` で読み込むと、debug モード (`Configure::read('debug')` が 1 以上) のときだけ、描画の
+   ルート (`/_storybook/render/:story`) が追加されます。`debug` が 0 ならルートを追加せず、ルートを読み込んだ
+   後に debug モードを切った場合もコントローラーが 404 を返します。
 
    `config/routes.php` で (既定のものと同じく) `CakePlugin::routes()` を呼んでいる必要があります。
 
@@ -378,13 +380,13 @@ HTML で、次のステータスで返ります。
 | 400 | 不正な JSON、不正な Element・テンプレートの名前、オブジェクトでない args |
 | 404 | 許可したディレクトリの外の Element、存在しない Element・テンプレート |
 | 405 | POST でない依頼 |
-| 500 | 描画中のエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースは debug モードでだけ表示 |
+| 500 | 描画中のエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースを表示 |
 
 <a id="running-storybook-locally"></a>
 
 ## ローカルでの起動
 
-(dev の依存をインストールした) アプリケーションを起動し、`storybook dev` を実行します。
+(dev の依存をインストールした) アプリケーションを debug モードで起動し、`storybook dev` を実行します。
 
 ```bash
 # ターミナル 1: CakePHP のアプリケーション
@@ -480,7 +482,7 @@ Storybook 用に別の設定ファイルを使うときは、フレームワー�
 ## 本番に入れない
 
 描画のエンドポイントは、許可したディレクトリの Element を任意の args で描画するもので、本番向けでは
-ありません。プラグインには無効にする切り替えはなく、dev の依存として本番にはインストールしません。
+ありません。debug モードでだけ動き、プラグインは dev の依存として本番にはインストールしません。
 
 - プラグインは `composer require --dev` でインストールし、本番は `composer install --no-dev` で
   デプロイする。本番のビルドではパッケージを追加しない ([静的ビルドと公開](#static-build) を参照)。
@@ -498,8 +500,9 @@ Storybook 用に別の設定ファイルを使うときは、フレームワー�
   許可したディレクトリ (`Storybook.elements`) の下、テンプレートはテンプレートのディレクトリ
   (`Storybook.templates`。false で無効にできる) の下に限ります。
 - args は、キーが PHP の変数名として正しい (`this` でない) JSON のオブジェクトである必要があります。
-- エンドポイントはプラグインをインストールした環境にだけあり (dev の依存なので本番にはない)、POST だけを
-  受け付け、`Cache-Control: no-store` と `X-Robots-Tag: noindex` を返します。サーバーのエラーのメッセージとトレースは debug モードでだけ表示します。
+- エンドポイントはプラグインをインストールした環境に (dev の依存なので本番にはない)、debug モード
+  (`debug` が 1 以上。それ以外は 404) のときだけあります。POST だけを受け付け、`Cache-Control: no-store` と
+  `X-Robots-Tag: noindex` を返します。debug モードなので、サーバーのエラーのメッセージとトレースを表示します。
 - 依頼はフォームを使わずに Storybook から来るため、エンドポイントは Security コンポーネント (CSRF) と
   セッションを使いません。Element が権限のない人にデータを見せてしまう環境にはインストールしないでください。
   Element は依頼の args と、ヘルパーや Element が自分で読むもの (設定、データベースなど) で描画されます。

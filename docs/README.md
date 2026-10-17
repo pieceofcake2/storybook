@@ -8,8 +8,9 @@ It consists of a CakePHP plugin, which provides the render endpoint, and a Story
 
 > [!IMPORTANT]
 > This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
-> and never install it in production: wherever the plugin is installed and loaded with its routes,
-> the render endpoint is available. See [Keeping Storybook out of Production](#production).
+> and never install it in production. The render endpoint works only in debug mode
+> (`debug` >= 1): run the application in debug mode for Storybook. See
+> [Keeping Storybook out of Production](#production).
 
 - [How It Works](#how-it-works)
 - [Requirements](#requirements)
@@ -109,7 +110,9 @@ application, and sends the requests to `/_storybook/render` of its origin.
    cache when you deploy (as after any change of the plugins).
 
    Loading the plugin with `'routes' => true` connects the render route
-   (`/_storybook/render/:story`). There is no other switch.
+   (`/_storybook/render/:story`), in debug mode only (`Configure::read('debug')` >= 1). With
+   `debug` 0, the route is not connected, and the controller also returns 404 (in case debug mode
+   is turned off after the routes are loaded).
 
    Your `config/routes.php` must call `CakePlugin::routes()` (as the default one does).
 
@@ -384,13 +387,13 @@ in the canvas. The error page is HTML whose first line is a comment with the mes
 | 400 | Invalid JSON, invalid name of an Element or a template, args that are not an object |
 | 404 | Element outside the allowed directories, missing Element or template |
 | 405 | Not a POST request |
-| 500 | Error while rendering, including PHP warnings when `errorsAsExceptions` is true. The message and the trace are shown in debug mode only |
+| 500 | Error while rendering, including PHP warnings when `errorsAsExceptions` is true, with the message and the trace |
 
 <a id="running-storybook-locally"></a>
 
 ## Running Storybook Locally
 
-Run the application (with the dev dependencies installed), and `storybook dev`:
+Run the application in debug mode (with the dev dependencies installed), and `storybook dev`:
 
 ```bash
 # Terminal 1: the CakePHP application
@@ -492,8 +495,8 @@ the render requests, as they are on the same origin.
 ## Keeping Storybook out of Production
 
 The render endpoint renders any Element of the allowed directories with arbitrary args, which is
-not meant for production. The plugin has no switch to disable it: it is a dev dependency, which is
-not installed in production.
+not meant for production. It works only in debug mode, and the plugin is a dev dependency, which
+is not installed in production.
 
 - Install the plugin with `composer require --dev`, and deploy production with
   `composer install --no-dev`. Do not add the package in the build of production (see
@@ -514,9 +517,9 @@ not installed in production.
   under the templates directory (`Storybook.templates`, which can be disabled with false).
 - The args must be a JSON object whose keys are valid PHP variable names (not `this`).
 - The endpoint exists only where the plugin is installed (a dev dependency, not installed in
-  production), accepts only POST requests, and returns
-  `Cache-Control: no-store` and `X-Robots-Tag: noindex`. The messages and traces of server errors
-  are shown only in debug mode.
+  production), and only in debug mode (`debug` >= 1, otherwise 404). It accepts only POST
+  requests, and returns `Cache-Control: no-store` and `X-Robots-Tag: noindex`. The messages and
+  traces of server errors are shown, as in debug mode.
 - The endpoint does not use the Security component (CSRF) or the session, since the requests come
   from Storybook without a form. Do not install it where the Elements could expose data to
   unauthorized users: Elements are rendered with the args of the request, and with whatever the

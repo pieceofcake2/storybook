@@ -34,7 +34,7 @@ package).
 
 > [!IMPORTANT]
 > This plugin is for development only. Install it as a dev dependency (`composer require --dev`),
-> and never install it in production.
+> and never install it in production. The render endpoint works only in debug mode.
 
 ## Documentation
 
@@ -65,8 +65,8 @@ environment only. See [Static Build and Deployment](docs/README.md#static-build)
 
 Only the name of an Element (under the allowed directories, `Elements/components/` by default) and
 its args are sent to the application, never a template or code. The render endpoint exists only
-where the plugin is installed: production is deployed with `composer install --no-dev`, so it does
-not have the plugin. See [Security](docs/README.md#security) and
+where the plugin is installed, and only in debug mode: production is deployed with
+`composer install --no-dev`, so it does not have the plugin. See [Security](docs/README.md#security) and
 [Keeping Storybook out of Production](docs/README.md#production).
 
 ## Contributing
