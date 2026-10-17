@@ -12,5 +12,8 @@
     <file>./Controller</file>
     <file>./Lib</file>
 
+    <exclude-pattern>*/node_modules/*</exclude-pattern>
+    <exclude-pattern>tests/test_app/webroot/storybook/*</exclude-pattern>
+
     <rule ref="CakePHP2"/>
 </ruleset>

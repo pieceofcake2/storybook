@@ -5,7 +5,9 @@ config_version = "0"
 # Paths that are not analyzed (dependencies and local files)
 exclude_patterns = [
     "vendor/**",
-    "node_modules/**",
+    "**/node_modules/**",
+    "storybook/dist/**",
+    "tests/test_app/webroot/storybook/**",
 ]
 
 test_patterns = [
