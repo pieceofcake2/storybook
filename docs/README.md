@@ -377,7 +377,9 @@ export default {
 ### Docs
 
 With `@storybook/addon-docs`, "Show code" shows the PHP code that renders the story, e.g.
-`<?= $this->element('components/button', ['label' => 'Apply', ...]) ?>`.
+`<?= $this->element('components/button', ['label' => 'Apply', ...]) ?>`. In a pre-rendered
+(static) Storybook, it shows the pre-rendered HTML instead (see
+[Controls in a static Storybook](#static-controls)).
 
 ![The Docs page of a component, with the PHP code shown by "Show code"](img/docs-show-code.png)
 
@@ -529,8 +531,14 @@ Run `storybook-cakephp prerender` after each `storybook build`, which replaces t
 The stories are pre-rendered with their own args, and a static Storybook cannot render other args.
 When the args are changed in Controls, the canvas shows a notice ("This story cannot be rendered
 with these args") instead of the story. Resetting the args shows the story again. The rest works as
-in `storybook dev`: the stories and the Docs show the pre-rendered HTML, its scripts run, play
-functions and actions (`data-storybook-callbacks`) work, and "Show code" shows the PHP code.
+in `storybook dev`: the stories and the Docs show the pre-rendered HTML, its scripts run, and play
+functions and actions (`data-storybook-callbacks`) work.
+
+Since the args cannot be changed, "Show code" in Docs shows the pre-rendered HTML of the story (as
+the application rendered it, not reformatted) instead of the PHP code. For args that were not
+pre-rendered, it shows the PHP code.
+
+![The Docs page of a static Storybook, with the pre-rendered HTML shown by "Show code"](img/static-show-code.png)
 
 The args must be the same every time the stories are loaded: an arg such as `new Date()` differs
 between the pre-rendering and the published Storybook, so the story shows the notice.
