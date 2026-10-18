@@ -43,6 +43,14 @@ export declare const launchOptions: (browser: string) => {
     executablePath?: string;
 };
 /**
+ * Checks that the CakePHP application can be reached: any HTTP response (including a redirect or
+ * an error) means that it is running. Redirects are not followed, since they can point to another
+ * URL (e.g. a login page on `App.fullBaseUrl`) that cannot be reached from here.
+ *
+ * @throws PrerenderError When the application cannot be reached
+ */
+export declare const checkServer: (server: string) => Promise<void>;
+/**
  * Pre-renders all the stories of a Storybook build with the CakePHP application, so that the build
  * is static: it loads the HTML of the stories from `<dir>/cakephp-prerendered/` instead of
  * requesting the application.

@@ -17,7 +17,7 @@ import {
     storiesOf,
     storyFileName,
 } from '../src/prerender/output.js';
-import { launchOptions, type PrerenderOptions, type PrerenderResult } from '../src/prerender/prerender.js';
+import { checkServer, launchOptions, PrerenderError, type PrerenderOptions, type PrerenderResult } from '../src/prerender/prerender.js';
 import { PROXY_ERROR_HEADER, resolveBuildFile, startBuildServer } from '../src/prerender/server.js';
 
 const IFRAME = '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="utf-8" />\n  </head>\n  <body></body>\n</html>\n';
@@ -118,6 +118,45 @@ describe('launchOptions', () => {
     });
 });
 
+describe('checkServer', () => {
+    const listen = async (handler: Parameters<typeof createServer>[1]): Promise<{ url: string; close: () => Promise<void> }> => {
+        const server = createServer(handler);
+        await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
+
+        return {
+            url: `http://127.0.0.1:${(server.address() as AddressInfo).port}/`,
+            close: () => new Promise((resolve) => server.close(() => resolve())),
+        };
+    };
+
+    it('does not follow redirects (e.g. to App.fullBaseUrl that cannot be reached)', async () => {
+        const app = await listen((req, res) => {
+            res.writeHead(302, { Location: 'https://127.0.0.1:9/users/login' }).end();
+        });
+        try {
+            await expect(checkServer(app.url)).resolves.toBeUndefined();
+        } finally {
+            await app.close();
+        }
+    });
+
+    it('accepts error responses', async () => {
+        const app = await listen((req, res) => res.writeHead(500).end());
+        try {
+            await expect(checkServer(app.url)).resolves.toBeUndefined();
+        } finally {
+            await app.close();
+        }
+    });
+
+    it('fails when the application cannot be reached', async () => {
+        const error = await checkServer('http://127.0.0.1:9/').catch((e: unknown) => e);
+
+        expect(error).toBeInstanceOf(PrerenderError);
+        expect(String(error)).toContain('Failed to connect to the CakePHP application at http://127.0.0.1:9/');
+    });
+});
+
 describe('resolveBuildFile', () => {
     it('resolves paths inside the build only', () => {
         expect(resolveBuildFile('/build', '/iframe.html')).toBe(join('/build', 'iframe.html'));
@@ -146,6 +185,11 @@ describe('startBuildServer', () => {
             req.on('data', (chunk) => (body += chunk));
             req.on('end', () => {
                 received.push({ method: req.method, url: req.url, proxy: req.headers['x-storybook-proxy'] as string, host: req.headers.host, body });
+                if (req.url === '/redirect') {
+                    res.writeHead(302, { location: 'https://127.0.0.1:9/users/login' }).end();
+
+                    return;
+                }
                 res.writeHead(200, { 'content-type': 'text/html' }).end('<p>from the app</p>');
             });
         });
@@ -182,6 +226,11 @@ describe('startBuildServer', () => {
 
             await fetch(`${server.url}img/logo.svg`);
             expect(received.at(-1)?.url).toBe('/img/logo.svg');
+
+            // Redirects of the application are passed to the browser, not followed
+            const redirect = await fetch(`${server.url}redirect`, { redirect: 'manual' });
+            expect(redirect.status).toBe(302);
+            expect(redirect.headers.get('location')).toBe('https://127.0.0.1:9/users/login');
         } finally {
             await server.close();
         }
