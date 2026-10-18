@@ -521,6 +521,10 @@ throws an exception, or the render endpoint is not available because the applica
 debug mode). Stories for which the application returns an error are pre-rendered with the error
 page, as `storybook dev` shows them, and listed as warnings.
 
+Before pre-rendering, the command checks that `--server` responds. Any HTTP response is enough,
+including a redirect (e.g. to a login page) or an error: redirects are not followed, so a redirect
+to `App.fullBaseUrl` that cannot be reached from the machine does not fail the check.
+
 Run `storybook-cakephp prerender` after each `storybook build`, which replaces the directory. If
 `npx storybook-cakephp` is not found after updating the plugin, run `npm install` again.
 
@@ -568,13 +572,21 @@ For example, in GitHub Actions:
 - run: npm ci
 - name: Build and pre-render Storybook
   run: |
-    php -S 127.0.0.1:8765 -t webroot webroot/index.php &
+    php -d variables_order=EGPCS -S 127.0.0.1:8765 -t webroot webroot/index.php &
     npx storybook build -o storybook-static
     npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
   env:
     APP_DEBUG: 1 # However your application turns on debug mode
 # Then upload storybook-static/ to /storybook/ of the development environment
 ```
+
+> [!NOTE]
+> By default, `php -S` does not put the environment variables into `$_ENV` and `$_SERVER`
+> (`variables_order` has no `E`). With [symfony/dotenv](https://symfony.com/doc/current/components/dotenv.html)
+> (e.g. in [pieceofcake2/app](https://github.com/pieceofcake2/app)), the values of the `.env` files
+> (e.g. `config/.env.local` on a developer machine) are then used instead of variables such as
+> `APP_DEBUG=1`. Run `php -d variables_order=EGPCS -S ...` when you pass environment variables to
+> the application, also locally.
 
 The application only has to render the Elements of the stories in CI: set up what they need (e.g.
 a database, if the helpers or the Elements read from it).
