@@ -510,6 +510,10 @@ npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-s
 エラーを返すストーリーは、`storybook dev` で表示されるのと同じくエラーのページで事前描画し、警告として
 一覧にします。
 
+事前描画の前に、コマンドは `--server` が応答することを確かめます。リダイレクト (ログインのページへなど) や
+エラーを含め、HTTP の応答があれば十分です。リダイレクトはたどらないので、そのマシンから接続できない
+`App.fullBaseUrl` へのリダイレクトでも失敗しません。
+
 `storybook build` はディレクトリを置き換えるので、ビルドのたびに `storybook-cakephp prerender` を実行します。
 プラグインを更新した後に `npx storybook-cakephp` が見つからない場合は、もう一度 `npm install` を実行して
 ください。
@@ -557,13 +561,20 @@ args は変えられないので、Docs の「Show code」には PHP のコー�
 - run: npm ci
 - name: Build and pre-render Storybook
   run: |
-    php -S 127.0.0.1:8765 -t webroot webroot/index.php &
+    php -d variables_order=EGPCS -S 127.0.0.1:8765 -t webroot webroot/index.php &
     npx storybook build -o storybook-static
     npx storybook-cakephp prerender --server http://127.0.0.1:8765 --dir storybook-static
   env:
     APP_DEBUG: 1 # アプリケーションで debug モードにする方法に合わせる
 # この後、storybook-static/ を開発環境の /storybook/ にアップロードする
 ```
+
+> [!NOTE]
+> `php -S` は、既定では環境変数を `$_ENV` と `$_SERVER` に入れません (`variables_order` に `E` がない)。
+> [symfony/dotenv](https://symfony.com/doc/current/components/dotenv.html) を使っている場合
+> ([pieceofcake2/app](https://github.com/pieceofcake2/app) など) は、`APP_DEBUG=1` のような環境変数よりも
+> `.env` のファイル (開発者のマシンの `config/.env.local` など) の値が使われます。アプリケーションに環境変数を
+> 渡すときは、ローカルでも `php -d variables_order=EGPCS -S ...` で起動してください。
 
 CI のアプリケーションは、ストーリーの Element を描画できれば十分です。Element が必要とするもの (ヘルパーや
 Element がデータベースを読むならデータベースなど) を用意してください。

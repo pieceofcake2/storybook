@@ -126,6 +126,22 @@ const describeEvent = (event) => {
     return detail === undefined ? event.name : `${event.name}: ${detail}`;
 };
 /**
+ * Checks that the CakePHP application can be reached: any HTTP response (including a redirect or
+ * an error) means that it is running. Redirects are not followed, since they can point to another
+ * URL (e.g. a login page on `App.fullBaseUrl`) that cannot be reached from here.
+ *
+ * @throws PrerenderError When the application cannot be reached
+ */
+export const checkServer = async (server) => {
+    try {
+        await fetch(server, { method: 'HEAD', redirect: 'manual' });
+    }
+    catch (error) {
+        const cause = error instanceof Error && error.cause !== undefined ? ` (${String(error.cause)})` : '';
+        throw new PrerenderError(`Failed to connect to the CakePHP application at ${server}: ${String(error)}${cause}`);
+    }
+};
+/**
  * Pre-renders all the stories of a Storybook build with the CakePHP application, so that the build
  * is static: it loads the HTML of the stories from `<dir>/cakephp-prerendered/` instead of
  * requesting the application.
@@ -141,12 +157,7 @@ export const prerender = async (options) => {
     }));
     const stories = storiesOf(index);
     const iframeHtml = await readFile(join(dir, 'iframe.html'), 'utf8');
-    try {
-        await fetch(options.server, { method: 'HEAD' });
-    }
-    catch (error) {
-        throw new PrerenderError(`Failed to connect to the CakePHP application at ${options.server}: ${String(error)}`);
-    }
+    await checkServer(options.server);
     const chromium = await loadChromium();
     const buildServer = await startBuildServer(dir, options.server);
     const result = { stories: 0, renders: 0, failures: [], warnings: [] };
