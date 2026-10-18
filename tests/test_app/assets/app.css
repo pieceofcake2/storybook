@@ -30,3 +30,19 @@
 .alert--danger {
     color: #991b1b;
 }
+
+.person-card {
+    padding: 1em;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+}
+
+.person-card__name {
+    margin: 0;
+    font-size: 1.25em;
+}
+
+.person-list {
+    display: grid;
+    gap: 1em;
+}

@@ -8,6 +8,11 @@ Cache::config('default', ['engine' => 'File']);
 Configure::write('Storybook', [
     'viewClass' => 'TestApp',
     'helpers' => ['Html'],
+    // src/Lib/: build Person objects from the JSON args, after setting a default person for a story
+    'argsProcessors' => [
+        ['class' => 'DefaultPersonArgsProcessor', 'stories' => ['components-person-card--default-person']],
+        ['class' => 'PersonArgsProcessor', 'elements' => ['components/person_card'], 'templates' => ['person_list']],
+    ],
 ]);
 
 CakePlugin::load('Storybook', [
