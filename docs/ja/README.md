@@ -164,6 +164,8 @@ Configure::write('Storybook', [
     'theme' => null,
     // PHP の Warning・Notice (未定義の変数など) で描画を失敗にするか
     'errorsAsExceptions' => true,
+    // 描画の前に args を変えるクラス (args プロセッサーを参照)
+    'argsProcessors' => [],
 ]);
 ```
 
@@ -324,6 +326,109 @@ export default {
 args はテンプレートのビューの変数になり、レイアウトなしで描画します。テンプレートのディレクトリは
 `Storybook.templates` で設定します。
 
+<a id="args-processors"></a>
+
+### args プロセッサー
+
+args は JSON の値ですが、Element はオブジェクト (エンティティ、値オブジェクト、日付など) を受け取ることが
+よくあります。args プロセッサーは、依頼を検証した後、Element (またはストーリー用のテンプレート) を描画する前に、
+サーバー側で args を変えるアプリケーションのクラスです。ストーリーはこれまでどおり JSON の args を送り、
+プロセッサーがそれをオブジェクトにします。
+
+```php
+<?php
+// src/Lib/Storybook/UserArgsProcessor.php
+App::uses('StorybookArgsProcessor', 'Storybook.Lib');
+App::uses('User', 'Lib');
+
+class UserArgsProcessor implements StorybookArgsProcessor
+{
+    public function __invoke(StorybookArgs $args): void
+    {
+        // {"user": {"name": "山田太郎", "joined": "2021-10-01"}} を User のオブジェクトにする
+        if (is_array($args['user'])) {
+            $args['user'] = User::fromArray($args['user']);
+        }
+        if (is_array($args['users'])) {
+            $args['users'] = array_map([User::class, 'fromArray'], $args['users']);
+        }
+    }
+}
+```
+
+```php
+<?php
+// templates/Elements/components/user_card.php
+/**
+ * @var AppView $this
+ * @var User $user
+ */
+?>
+<article class="user-card">
+    <h2><?= h($user->name) ?></h2>
+    <p><?= h($user->joined->format('Y年n月')) ?>入社</p>
+</article>
+```
+
+```ts
+export default {
+    component: 'components/user_card',
+    args: { user: { name: '山田太郎', joined: '2021-10-01' } },
+} satisfies Meta;
+```
+
+プロセッサーは `Storybook.argsProcessors` に (`config/bootstrap.php` で) クラス名で登録します。対象を絞るときは
+配列で書きます。
+
+```php
+App::uses('UserArgsProcessor', 'Lib/Storybook');
+
+Configure::write('Storybook.argsProcessors', [
+    // すべてのストーリー
+    'UserArgsProcessor',
+    // 一致するストーリーだけ
+    [
+        'class' => 'JobArgsProcessor',
+        'stories' => ['components-job-card--closed'], // ストーリーの ID
+        'elements' => ['components/job_card'],        // Element の名前
+        'templates' => ['job_list'],                  // ストーリー用のテンプレートの名前
+    ],
+]);
+```
+
+- `stories`・`elements`・`templates` のどれも無い項目は、すべてのストーリーに適用します。どれかがあると、
+  そのどれかに一致するストーリーに適用します。一致を見るのは、ストーリーの ID (ストーリーの URL のもの。
+  `components-job-card--closed` など)、依頼の Element の名前、依頼のストーリー用のテンプレートの名前です
+  (テンプレートの中で描画する Element は対象になりません)。値は完全一致の名前 (文字列か文字列の配列) で、
+  ワイルドカードは使えません。
+- プロセッサーは項目の順に実行します。前のプロセッサーが次のプロセッサーのために args を用意できます
+  (既定値を入れておき、次のプロセッサーがオブジェクトにする、など)。
+- クラスは、読み込み済みでも自動読み込みもできないときに、`App::uses($class, 'Lib')`
+  (`Plugin.ClassName` なら `App::uses($class, 'Plugin.Lib')`) で読み込みます。ほかのパッケージのクラスは
+  (上の例のように) 先に `App::uses()` で読み込むか、Composer で自動読み込みする名前空間付きのクラスにします。
+  インスタンスは引数なしで、依頼ごとに 1 回作ります。
+
+`StorybookArgs` は、args と描画するストーリーの情報を持ちます。
+
+| メソッド | 説明 |
+| --- | --- |
+| `$args['name']`、`get('name', $default = null)` | arg の値 (無ければ null か `$default`) |
+| `$args['name'] = $value`、`set('name', $value)` | arg を設定する (任意の PHP の値)。名前は変数名として正しいもので、`this` 以外 |
+| `isset($args['name'])`、`has('name')` | arg があるか (null のとき `isset()` は false、`has()` は true) |
+| `unset($args['name'])`、`remove('name')` | arg を消す |
+| `merge(array $values, bool $override = false)` | args を足す。既定では、すでにある args を残す (既定値を入れる用途)。`$override` なら値で置き換える |
+| `toArray()`、`foreach`、`count()` | args (Element またはテンプレートの変数) |
+| `story()` | ストーリーの ID (不明なら空文字列) |
+| `element()`、`template()` | Element またはストーリー用のテンプレートの名前 (もう一方は null) |
+
+プロセッサーが例外を投げると、Element のエラーと同じようにストーリーは失敗します。レスポンスは、メッセージと
+トレースを含む 500 のエラーです (`NotFoundException` などの `HttpException` なら、そのステータス)。
+`errorsAsExceptions` なら、プロセッサーの中の PHP の Warning・Notice でも失敗します。
+
+静的な Storybook を事前描画するときは、アプリケーションがストーリーを描画するので、プロセッサーも実行します。
+Docs の「Show code」には、プロセッサーが作ったオブジェクトではなく、ストーリーが送る JSON の args
+(`'user' => ['name' => '山田太郎', ...]` など) が表示されます。
+
 ### render 関数
 
 ストーリーの `render` から、Element (またはテンプレート) と args を返すこともできます。
@@ -387,7 +492,7 @@ HTML で、次のステータスで返ります。
 | 400 | 不正な JSON、不正な Element・テンプレートの名前、オブジェクトでない args |
 | 404 | 許可したディレクトリの外の Element、存在しない Element・テンプレート |
 | 405 | POST でない依頼 |
-| 500 | 描画中のエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースを表示 |
+| 500 | 描画中・args プロセッサーのエラー (`errorsAsExceptions` が true のときの PHP の Warning を含む)。メッセージとトレースを表示 |
 
 <a id="running-storybook-locally"></a>
 
@@ -604,6 +709,10 @@ debug モードのアプリケーションと同じオリジン (ローカルで
   許可したディレクトリ (`Storybook.elements`) の下、テンプレートはテンプレートのディレクトリ
   (`Storybook.templates`。false で無効にできる) の下に限ります。
 - args は、キーが PHP の変数名として正しい (`this` でない) JSON のオブジェクトである必要があります。
+- args プロセッサーは、サーバー側で設定したクラス (`Storybook.argsProcessors`) だけです。依頼でクラスや
+  プロセッサーを指定することはできません。プロセッサーが受け取るのは依頼の args で、エンドポイントに届く人なら
+  誰でも送れます。ほかの入力と同じように扱ってください (検証する、ストーリーで見せるべきでないデータの
+  読み書きに使わない)。
 - エンドポイントはプラグインをインストールした環境に (dev の依存なので本番にはない)、debug モード
   (`debug` が 1 以上。それ以外は 404) のときだけあります。POST だけを受け付け、`Cache-Control: no-store` と
   `X-Robots-Tag: noindex` を返します。debug モードなので、サーバーのエラーのメッセージとトレースを表示します。
@@ -648,7 +757,7 @@ export default defineConfig({
 ## 制限
 
 - args は JSON の値なので、オブジェクト (エンティティや `DateTime` など) を受け取る Element には、それを
-  組み立てるストーリー用のテンプレートか、配列を受け取る Element が必要です。
+  組み立てる [args プロセッサー](#args-processors) かストーリー用のテンプレートが必要です。
 - 依頼は `/_storybook/render` への POST なので、現在の依頼 (URL、クエリ、セッション、ログイン中のユーザー) に
   依存する Element は、その依頼の内容で描画されます。
 - 事前描画した Storybook は、ストーリーをそれぞれの args でだけ表示し、Controls は読み取り専用です

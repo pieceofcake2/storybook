@@ -1,6 +1,7 @@
 <?php
 
 App::uses('Controller', 'Controller');
+App::uses('StorybookArgs', 'Storybook.Lib');
 App::uses('StorybookRenderer', 'Storybook.Lib');
 App::uses('View', 'View');
 
@@ -14,7 +15,10 @@ class StorybookRendererTest extends CakeTestCase
         $testApp = dirname(__DIR__, 2) . DS . 'test_app' . DS;
         App::build([
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
+            'Lib' => [$testApp . 'src' . DS . 'Lib' . DS],
         ], App::PREPEND);
+        App::uses('RecordingArgsProcessor', 'Lib');
+        RecordingArgsProcessor::$instances = 0;
 
         $request = new CakeRequest('/', false);
         $request->webroot = '/';
@@ -270,6 +274,168 @@ class StorybookRendererTest extends CakeTestCase
         }
 
         $this->assertSame($level, ob_get_level());
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function personSettings(): array
+    {
+        return ['argsProcessors' => [
+            ['class' => 'DefaultPersonArgsProcessor', 'stories' => ['components-person-card--default-person']],
+            ['class' => 'PersonArgsProcessor', 'elements' => ['components/person_card'], 'templates' => ['person_list']],
+        ]];
+    }
+
+    public function testArgsProcessorsBuildObjectsForAnElement(): void
+    {
+        $html = $this->renderer($this->personSettings())->render([
+            'element' => 'components/person_card',
+            'args' => ['person' => ['name' => 'Taro <Yamada>', 'role' => 'Concierge', 'joined' => '2021-10-01']],
+        ], 'components-person-card--default');
+
+        $this->assertStringContainsString('<h2 class="person-card__name">Taro &lt;Yamada&gt;</h2>', $html);
+        $this->assertStringContainsString('<p class="person-card__joined">Since October 2021</p>', $html);
+    }
+
+    public function testArgsProcessorsBuildObjectsForATemplate(): void
+    {
+        $html = $this->renderer($this->personSettings())->render([
+            'template' => 'person_list',
+            'args' => ['people' => [
+                ['name' => 'Taro Yamada', 'role' => 'Concierge', 'joined' => '2021-10-01'],
+                ['name' => 'Hanako Suzuki', 'role' => 'Chef', 'joined' => '2019-04-01'],
+            ]],
+        ], 'templates-person-list--default');
+
+        $this->assertSame(2, substr_count($html, '<article class="person-card">'));
+        $this->assertStringContainsString('Since April 2019', $html);
+    }
+
+    public function testArgsProcessorScopedToAStoryRunsBeforeTheNextOne(): void
+    {
+        $settings = $this->personSettings();
+
+        $html = $this->renderer($settings)->render(['element' => 'components/person_card'], 'components-person-card--default-person');
+        $this->assertStringContainsString('<h2 class="person-card__name">Jane Doe</h2>', $html);
+
+        // merge() keeps the args of the story
+        $html = $this->renderer($settings)->render([
+            'element' => 'components/person_card',
+            'args' => ['person' => ['name' => 'Taro Yamada', 'role' => 'Concierge', 'joined' => '2021-10-01']],
+        ], 'components-person-card--default-person');
+        $this->assertStringContainsString('<h2 class="person-card__name">Taro Yamada</h2>', $html);
+    }
+
+    public function testElementThatRequiresAnObjectFailsWithoutTheArgsProcessor(): void
+    {
+        $this->expectException(InvalidArgumentException::class);
+        $this->expectExceptionMessage('$person must be a Person, array given.');
+
+        $this->renderer()->render([
+            'element' => 'components/person_card',
+            'args' => ['person' => ['name' => 'Taro Yamada', 'role' => 'Concierge', 'joined' => '2021-10-01']],
+        ]);
+    }
+
+    /**
+     * Runs the processors of the renderer on empty args of an Element
+     *
+     * @return array<mixed>
+     */
+    private function processedArgs(StorybookRenderer $renderer, string $story, string $element = 'components/alert'): array
+    {
+        return (array)($renderer->processArgs(new StorybookArgs([], $story, $element))['processors'] ?? []);
+    }
+
+    public function testProcessArgs(): void
+    {
+        $renderer = $this->renderer(['argsProcessors' => [
+            ['class' => 'RecordingArgsProcessor', 'stories' => 'components-alert--info'],
+            ['class' => 'OtherRecordingArgsProcessor', 'elements' => 'components/alert'],
+        ]]);
+
+        $this->assertSame(['RecordingArgsProcessor', 'OtherRecordingArgsProcessor'], $this->processedArgs($renderer, 'components-alert--info'));
+        $this->assertSame(['OtherRecordingArgsProcessor'], $this->processedArgs($renderer, 'components-alert--success'));
+        $this->assertSame([], $this->processedArgs($renderer, 'components-button--primary', 'components/button'));
+        // Instantiated once by the renderer
+        $this->assertSame(2, RecordingArgsProcessor::$instances);
+    }
+
+    public function testArgsProcessorsDoNotRunForInvalidRequests(): void
+    {
+        $renderer = $this->renderer(['argsProcessors' => ['BrokenArgsProcessor']]);
+
+        $requests = [
+            [['element' => 'components/button', 'args' => ['1label' => 'A']], BadRequestException::class],
+            [['element' => 'secret'], NotFoundException::class],
+            [['element' => 'components/missing'], NotFoundException::class],
+            [['template' => '../alert_list'], BadRequestException::class],
+        ];
+        foreach ($requests as [$payload, $exception]) {
+            try {
+                $renderer->render($payload);
+                $this->fail('No exception was thrown.');
+            } catch (Exception $e) {
+                $this->assertInstanceOf($exception, $e);
+            }
+        }
+
+        $this->expectException(NotFoundException::class);
+        $this->expectExceptionMessage('Story templates are disabled.');
+        $this->renderer(['templates' => false, 'argsProcessors' => ['BrokenArgsProcessor']])->render(['template' => 'alert_list']);
+    }
+
+    public function testArgsProcessorErrorIsThrown(): void
+    {
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage('The args processor failed.');
+
+        $this->renderer(['argsProcessors' => ['BrokenArgsProcessor']])->render(['element' => 'components/alert', 'args' => ['message' => 'A']]);
+    }
+
+    public function testArgsProcessorWarningIsThrown(): void
+    {
+        $level = ob_get_level();
+        try {
+            $this->renderer(['argsProcessors' => ['BrokenArgsProcessor']])->render([
+                'element' => 'components/alert',
+                'args' => ['message' => 'A', 'throw' => 'warning'],
+            ]);
+            $this->fail('No exception was thrown.');
+        } catch (ErrorException $e) {
+            $this->assertSame('Undefined array key "missing"', $e->getMessage());
+        }
+        $this->assertSame($level, ob_get_level());
+    }
+
+    public function testArgsProcessorWarningIsIgnoredWithoutErrorsAsExceptions(): void
+    {
+        $warnings = [];
+        set_error_handler(function (int $severity, string $message) use (&$warnings): bool {
+            $warnings[] = $message;
+
+            return true;
+        });
+        try {
+            $html = $this->renderer(['argsProcessors' => ['BrokenArgsProcessor'], 'errorsAsExceptions' => false])->render([
+                'element' => 'components/alert',
+                'args' => ['message' => 'A', 'throw' => 'warning'],
+            ]);
+        } finally {
+            restore_error_handler();
+        }
+
+        $this->assertSame(['Undefined array key "missing"'], $warnings);
+        $this->assertSame('<div class="alert alert--info" role="alert">A</div>', trim($html));
+    }
+
+    public function testInvalidArgsProcessorsConfigurationIsThrown(): void
+    {
+        $this->expectException(CakeException::class);
+        $this->expectExceptionMessage('"Storybook.argsProcessors" must be an array.');
+
+        $this->renderer(['argsProcessors' => 'PersonArgsProcessor'])->render(['element' => 'components/alert', 'args' => ['message' => 'A']]);
     }
 
     public function testIsAllowedElement(): void

@@ -13,6 +13,7 @@ class StorybookControllerTest extends ControllerTestCase
         $testApp = dirname(__DIR__, 2) . DS . 'test_app' . DS;
         App::build([
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
+            'Lib' => [$testApp . 'src' . DS . 'Lib' . DS],
         ], App::PREPEND);
         Configure::write('Storybook', ['helpers' => ['Html']]);
         Configure::write('debug', 2);
@@ -218,5 +219,93 @@ class StorybookControllerTest extends ControllerTestCase
         $this->assertStringEndsWith(' -->', $firstLine);
         $this->assertSame(1, substr_count($firstLine, '-->'));
         $this->assertStringNotContainsString('<script>', $html);
+    }
+
+    /**
+     * Configures the args processors of the test application (config/bootstrap.php)
+     */
+    private function configurePersonArgsProcessors(): void
+    {
+        Configure::write('Storybook.argsProcessors', [
+            ['class' => 'DefaultPersonArgsProcessor', 'stories' => ['components-person-card--default-person']],
+            ['class' => 'PersonArgsProcessor', 'elements' => ['components/person_card'], 'templates' => ['person_list']],
+        ]);
+    }
+
+    public function testArgsProcessorsBuildObjectsFromTheJsonArgs(): void
+    {
+        $this->configurePersonArgsProcessors();
+
+        $html = $this->renderStory([
+            'element' => 'components/person_card',
+            'args' => ['person' => ['name' => 'Taro Yamada', 'role' => 'Concierge', 'joined' => '2021-10-01']],
+        ], 'POST', 'components-person-card--default');
+
+        $this->assertSame(200, $this->statusCode());
+        $this->assertStringContainsString('<h2 class="person-card__name">Taro Yamada</h2>', $html);
+        $this->assertStringContainsString('Since October 2021', $html);
+    }
+
+    public function testArgsProcessorsAreScopedByTheStoryIdOfTheUrl(): void
+    {
+        $this->configurePersonArgsProcessors();
+
+        $html = $this->renderStory(['element' => 'components/person_card'], 'POST', 'components-person-card--default-person');
+        $this->assertSame(200, $this->statusCode());
+        $this->assertStringContainsString('<h2 class="person-card__name">Jane Doe</h2>', $html);
+
+        $html = $this->renderStory(['element' => 'components/person_card'], 'POST', 'components-person-card--other');
+        $this->assertErrorHtml(500, 'Undefined variable $person', $html);
+    }
+
+    public function testElementThatRequiresAnObjectFailsWithoutArgsProcessors(): void
+    {
+        $html = $this->renderStory([
+            'element' => 'components/person_card',
+            'args' => ['person' => ['name' => 'Taro Yamada', 'role' => 'Concierge', 'joined' => '2021-10-01']],
+        ], 'POST', 'components-person-card--default');
+
+        $this->assertErrorHtml(500, '$person must be a Person, array given.', $html);
+    }
+
+    public function testArgsProcessorsCannotBeSentByTheClient(): void
+    {
+        $html = $this->renderStory([
+            'element' => 'components/button',
+            'args' => ['label' => 'A', 'url' => '/'],
+            'argsProcessors' => ['BrokenArgsProcessor'],
+        ]);
+
+        $this->assertErrorHtml(400, 'Unknown key &quot;argsProcessors&quot; in the request body.', $html);
+    }
+
+    public function testArgsProcessorErrorIsInternalServerErrorWithDetails(): void
+    {
+        Configure::write('Storybook.argsProcessors', ['BrokenArgsProcessor']);
+
+        $html = $this->renderStory(['element' => 'components/alert', 'args' => ['message' => 'A']], 'POST', 'components-alert--info');
+
+        $this->assertErrorHtml(500, 'The args processor failed.', $html);
+        $this->assertStringContainsString('<h1>RuntimeException</h1>', $html);
+        $this->assertStringContainsString('<p>Story: <code>components-alert--info</code></p>', $html);
+        $this->assertStringContainsString('BrokenArgsProcessor.php:', $html);
+    }
+
+    public function testArgsProcessorHttpExceptionKeepsItsStatus(): void
+    {
+        Configure::write('Storybook.argsProcessors', ['BrokenArgsProcessor']);
+
+        $html = $this->renderStory(['element' => 'components/alert', 'args' => ['message' => 'A', 'throw' => 'not-found']]);
+
+        $this->assertErrorHtml(404, 'The job was not found.', $html);
+    }
+
+    public function testInvalidArgsProcessorIsInternalServerError(): void
+    {
+        Configure::write('Storybook.argsProcessors', ['NotAnArgsProcessor']);
+
+        $html = $this->renderStory(['element' => 'components/alert', 'args' => ['message' => 'A']]);
+
+        $this->assertErrorHtml(500, 'Args processor class &quot;NotAnArgsProcessor&quot; must implement StorybookArgsProcessor.', $html);
     }
 }
