@@ -1,6 +1,8 @@
 <?php
 
 App::uses('View', 'View');
+App::uses('StorybookArgs', 'Storybook.Lib');
+App::uses('StorybookArgsProcessors', 'Storybook.Lib');
 
 /**
  * Renders an Element (or a story template) for Storybook.
@@ -28,6 +30,7 @@ class StorybookRenderer
      * - `templates`: Directory of the story templates under the view path (`templates/Stories/`), or false to disable them
      * - `viewClass`, `helpers`, `ext`, `theme`: View settings. Defaults to those of `AppController`
      * - `errorsAsExceptions`: Whether PHP warnings and notices in templates make the rendering fail
+     * - `argsProcessors`: Args processors, which change the args before the rendering (see StorybookArgsProcessors)
      *
      * @var array<string, mixed>
      */
@@ -39,6 +42,7 @@ class StorybookRenderer
         'ext' => null,
         'theme' => null,
         'errorsAsExceptions' => true,
+        'argsProcessors' => [],
     ];
 
     /**
@@ -87,6 +91,11 @@ class StorybookRenderer
     protected array $settings;
 
     /**
+     * @var StorybookArgsProcessors|null
+     */
+    protected ?StorybookArgsProcessors $argsProcessors = null;
+
+    /**
      * @param View $View View to render with (the View class of the application)
      * @param array<string, mixed>|null $settings Settings (defaults to the configured ones)
      */
@@ -97,17 +106,19 @@ class StorybookRenderer
     }
 
     /**
-     * Validates the payload of a render request and renders it
+     * Validates the payload of a render request, runs the args processors and renders it
      *
      * The payload is `{"element": "components/name", "args": {...}}`, or
-     * `{"template": "name", "args": {...}}` for a story template.
+     * `{"template": "name", "args": {...}}` for a story template. The args processors
+     * (`argsProcessors`) that apply to the story change the args before the rendering.
      *
      * @param mixed $payload Decoded JSON body
+     * @param string $story Story ID (for the args processors), or an empty string if it is unknown
      * @return string Rendered HTML
      * @throws BadRequestException When the payload is invalid
      * @throws NotFoundException When the Element or the template does not exist or is not allowed
      */
-    public function render($payload): string
+    public function render($payload, string $story = ''): string
     {
         if (!is_array($payload) || static::isList($payload)) {
             throw new BadRequestException('The request body must be a JSON object.');
@@ -122,10 +133,40 @@ class StorybookRenderer
             throw new BadRequestException('Either "element" or "template" is required in the request body.');
         }
         if (isset($payload['element'])) {
-            return $this->renderElement($this->name($payload['element'], 'element'), $args);
-        }
+            $name = $this->name($payload['element'], 'element');
+            $this->checkElement($name);
 
-        return $this->renderTemplate($this->name($payload['template'], 'template'), $args);
+            return $this->renderElement($name, $this->processArgs(new StorybookArgs($args, $story, $name)));
+        }
+        $name = $this->name($payload['template'], 'template');
+        $this->checkTemplates();
+
+        return $this->renderTemplate($name, $this->processArgs(new StorybookArgs($args, $story, null, $name)));
+    }
+
+    /**
+     * Runs the args processors that apply to the args, and returns the processed args
+     *
+     * PHP warnings and notices in the processors make the rendering fail, as in the templates
+     * (`errorsAsExceptions`).
+     *
+     * @param StorybookArgs $args Args
+     * @return array<string, mixed>
+     * @throws Throwable Errors of the processors
+     */
+    public function processArgs(StorybookArgs $args): array
+    {
+        if ($this->argsProcessors === null) {
+            $this->argsProcessors = new StorybookArgsProcessors($this->settings['argsProcessors']);
+        }
+        $processors = $this->argsProcessors;
+        $this->capture(function () use ($processors, $args): string {
+            $processors->process($args);
+
+            return '';
+        });
+
+        return $args->toArray();
     }
 
     /**
@@ -138,13 +179,7 @@ class StorybookRenderer
      */
     public function renderElement(string $name, array $args = []): string
     {
-        $this->name($name, 'element');
-        if (!$this->isAllowedElement($name)) {
-            throw new NotFoundException(sprintf('Element "%s" is not in the allowed directories (%s).', $name, implode(', ', $this->allowedDirectories())));
-        }
-        if (!$this->View->elementExists($name)) {
-            throw new NotFoundException(sprintf('Element "%s" was not found.', $name));
-        }
+        $this->checkElement($name);
 
         return $this->capture(fn() => $this->View->element($name, $this->args($args), ['ignoreMissing' => false]));
     }
@@ -160,10 +195,7 @@ class StorybookRenderer
     public function renderTemplate(string $name, array $args = []): string
     {
         $this->name($name, 'template');
-        $directory = $this->settings['templates'];
-        if (!is_string($directory) || $directory === '') {
-            throw new NotFoundException('Story templates are disabled.');
-        }
+        $directory = $this->checkTemplates();
 
         $View = $this->View;
         $View->viewVars = [];
@@ -175,6 +207,42 @@ class StorybookRenderer
         } catch (MissingViewException $e) {
             throw new NotFoundException(sprintf('Story template "%s" was not found.', $name));
         }
+    }
+
+    /**
+     * Checks that the Element can be rendered: it is under one of the allowed directories, and it
+     * exists
+     *
+     * @param string $name Element name
+     * @return void
+     * @throws BadRequestException When the name is invalid
+     * @throws NotFoundException
+     */
+    protected function checkElement(string $name): void
+    {
+        $this->name($name, 'element');
+        if (!$this->isAllowedElement($name)) {
+            throw new NotFoundException(sprintf('Element "%s" is not in the allowed directories (%s).', $name, implode(', ', $this->allowedDirectories())));
+        }
+        if (!$this->View->elementExists($name)) {
+            throw new NotFoundException(sprintf('Element "%s" was not found.', $name));
+        }
+    }
+
+    /**
+     * Checks that the story templates are enabled, and returns their directory
+     *
+     * @return string
+     * @throws NotFoundException When they are disabled
+     */
+    protected function checkTemplates(): string
+    {
+        $directory = $this->settings['templates'];
+        if (!is_string($directory) || $directory === '') {
+            throw new NotFoundException('Story templates are disabled.');
+        }
+
+        return $directory;
     }
 
     /**

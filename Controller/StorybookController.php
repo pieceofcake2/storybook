@@ -10,8 +10,9 @@ App::uses('StorybookRenderer', 'Storybook.Lib');
  * requests are rejected (404) if debug is turned off after the routes are loaded.
  *
  * Receives `{"element": "components/name", "args": {...}}` (or `{"template": ..., "args": ...}`)
- * as JSON and returns the rendered HTML fragment. Errors are returned as HTML whose first line is
- * `<!-- message -->`, with a 4xx or 5xx status, so that Storybook can show them.
+ * as JSON, runs the args processors (`Storybook.argsProcessors`) and returns the rendered HTML
+ * fragment. Errors are returned as HTML whose first line is `<!-- message -->`, with a 4xx or 5xx
+ * status, so that Storybook can show them.
  *
  * It extends Controller and not AppController, so the components of the application (Security,
  * Session, ...) and its callbacks are not used. The View class and the helpers are those of
@@ -71,7 +72,7 @@ class StorybookController extends Controller
     /**
      * Renders a story
      *
-     * @param string|null $story Story ID (for logs and error messages only)
+     * @param string|null $story Story ID (for the args processors, the logs and the error messages)
      * @return CakeResponse
      */
     public function story($story = null)
@@ -94,7 +95,7 @@ class StorybookController extends Controller
             $View = $this->_getViewObject();
             // Look up Elements and templates in the application, not in this plugin
             $View->plugin = null;
-            $html = (new StorybookRenderer($View))->render($payload);
+            $html = (new StorybookRenderer($View))->render($payload, is_string($story) ? $story : '');
             $this->response->body($html);
         } catch (Throwable $e) {
             $this->response->statusCode($e instanceof HttpException ? $e->getCode() : 500);
