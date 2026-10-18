@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- Args processors (`Storybook.argsProcessors`): classes of the application implementing
+  `StorybookArgsProcessor` (`__invoke(StorybookArgs $args): void`) that change the args on the
+  server before the Element or the story template is rendered, e.g. to build entities or value
+  objects from the JSON args. They apply to every story, or only to the stories that match their
+  `stories` (story IDs), `elements` or `templates` (names), and run in the order of the
+  configuration. `StorybookArgs` gives array access and `get()`, `set()`, `has()`, `remove()`,
+  `merge()` (keeping the args that are set, unless `$override`) and `toArray()`, with the story ID
+  and the name of the Element or the template. Errors of the processors fail the story (500 with
+  the message and the trace). Only configured classes run: the request cannot name one.
+
 ## [1.2.2] - 2026-10-18
 
 ### Fixed
@@ -67,6 +81,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`excludeVitePlugins`), actions with `data-storybook-callbacks`, and the PHP code in Docs.
 - Static builds that work on the same origin as the application, under any path.
 
+[Unreleased]: https://github.com/pieceofcake2/storybook/compare/v1.2.2...HEAD
 [1.2.2]: https://github.com/pieceofcake2/storybook/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/pieceofcake2/storybook/compare/v1.2.0...v1.2.1
 [1.2.0]: https://github.com/pieceofcake2/storybook/compare/v1.1.0...v1.2.0

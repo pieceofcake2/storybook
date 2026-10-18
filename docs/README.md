@@ -171,6 +171,8 @@ Configure::write('Storybook', [
     'theme' => null,
     // Whether PHP warnings and notices (e.g. an undefined variable) make the rendering fail
     'errorsAsExceptions' => true,
+    // Classes that change the args before the rendering (see Args processors)
+    'argsProcessors' => [],
 ]);
 ```
 
@@ -332,6 +334,110 @@ export default {
 The args are set as the view variables of the template, which is rendered without a layout. The
 templates directory is set by `Storybook.templates`.
 
+<a id="args-processors"></a>
+
+### Args processors
+
+Args are JSON values, but Elements often receive objects: entities, value objects, dates. Args
+processors are classes of your application that change the args on the server, after the request
+is validated and before the Element (or the story template) is rendered. The story still sends
+JSON args, and the processor turns them into objects:
+
+```php
+<?php
+// src/Lib/Storybook/UserArgsProcessor.php
+App::uses('StorybookArgsProcessor', 'Storybook.Lib');
+App::uses('User', 'Lib');
+
+class UserArgsProcessor implements StorybookArgsProcessor
+{
+    public function __invoke(StorybookArgs $args): void
+    {
+        // {"user": {"name": "Taro", "joined": "2021-10-01"}} becomes a User object
+        if (is_array($args['user'])) {
+            $args['user'] = User::fromArray($args['user']);
+        }
+        if (is_array($args['users'])) {
+            $args['users'] = array_map([User::class, 'fromArray'], $args['users']);
+        }
+    }
+}
+```
+
+```php
+<?php
+// templates/Elements/components/user_card.php
+/**
+ * @var AppView $this
+ * @var User $user
+ */
+?>
+<article class="user-card">
+    <h2><?= h($user->name) ?></h2>
+    <p>Since <?= h($user->joined->format('F Y')) ?></p>
+</article>
+```
+
+```ts
+export default {
+    component: 'components/user_card',
+    args: { user: { name: 'Taro Yamada', joined: '2021-10-01' } },
+} satisfies Meta;
+```
+
+Register the processors in `Storybook.argsProcessors` (in `config/bootstrap.php`), by class name,
+or with an array to scope them:
+
+```php
+App::uses('UserArgsProcessor', 'Lib/Storybook');
+
+Configure::write('Storybook.argsProcessors', [
+    // All the stories
+    'UserArgsProcessor',
+    // Only the matching stories
+    [
+        'class' => 'JobArgsProcessor',
+        'stories' => ['components-job-card--closed'], // Story IDs
+        'elements' => ['components/job_card'],        // Names of Elements
+        'templates' => ['job_list'],                  // Names of story templates
+    ],
+]);
+```
+
+- An entry without `stories`, `elements` and `templates` applies to every story. With some of
+  them, it applies to the stories that match any of them: the story ID (as in the URL of the
+  story, e.g. `components-job-card--closed`), the name of the Element of the request, or the name
+  of its story template (not to the Elements rendered inside the template). The values are exact
+  names (a string or an array of strings), without wildcards.
+- The processors run in the order of the entries, so a processor can prepare the args for the
+  next one (e.g. set default values that another one turns into objects).
+- The classes are loaded with `App::uses($class, 'Lib')` (`App::uses($class, 'Plugin.Lib')` for
+  `Plugin.ClassName`) unless they are already loaded or can be autoloaded: load the classes of
+  other packages with `App::uses()` before (as above), or use namespaced classes autoloaded by
+  Composer. They are instantiated without arguments, once per request.
+
+`StorybookArgs` holds the args and the story being rendered:
+
+| Method | Description |
+| --- | --- |
+| `$args['name']`, `get('name', $default = null)` | The value of an arg (null or `$default` if it is not set) |
+| `$args['name'] = $value`, `set('name', $value)` | Sets an arg (any PHP value). The name must be a valid variable name, not `this` |
+| `isset($args['name'])`, `has('name')` | Whether the arg is set (`isset()` is false for null, `has()` is true) |
+| `unset($args['name'])`, `remove('name')` | Removes an arg |
+| `merge(array $values, bool $override = false)` | Adds args. By default, the args that are already set are kept (to set default values); with `$override`, the values replace them |
+| `toArray()`, `foreach`, `count()` | The args, the variables of the Element or of the template |
+| `story()` | The story ID (an empty string if unknown) |
+| `element()`, `template()` | The name of the Element, or of the story template (null for the other one) |
+
+An exception thrown by a processor fails the story, as an error of the Element does: the
+response is a 500 error with the message and the trace (or the status of an `HttpException`, e.g.
+`NotFoundException`). PHP warnings and notices in the processors fail it too, with
+`errorsAsExceptions`.
+
+Processors also run when a static Storybook is pre-rendered, since the application renders the
+stories then. "Show code" in Docs shows the JSON args sent by the story (e.g.
+`'user' => ['name' => 'Taro Yamada', ...]`), not the objects built by the processors.
+
 ### Render functions
 
 A story can return the Element (or the template) and the args from `render`:
@@ -394,7 +500,7 @@ in the canvas. The error page is HTML whose first line is a comment with the mes
 | 400 | Invalid JSON, invalid name of an Element or a template, args that are not an object |
 | 404 | Element outside the allowed directories, missing Element or template |
 | 405 | Not a POST request |
-| 500 | Error while rendering, including PHP warnings when `errorsAsExceptions` is true, with the message and the trace |
+| 500 | Error while rendering or in an args processor, including PHP warnings when `errorsAsExceptions` is true, with the message and the trace |
 
 <a id="running-storybook-locally"></a>
 
@@ -620,6 +726,10 @@ is not installed in production.
   extension. Elements must be under the allowed directories (`Storybook.elements`), and templates
   under the templates directory (`Storybook.templates`, which can be disabled with false).
 - The args must be a JSON object whose keys are valid PHP variable names (not `this`).
+- Args processors are only the classes configured on the server (`Storybook.argsProcessors`):
+  the request cannot name a class or a processor. They receive the args of the request, which
+  anyone who can reach the endpoint can send: build objects from them as from any input (validate
+  them, and do not use them to read or write data that the stories should not show).
 - The endpoint exists only where the plugin is installed (a dev dependency, not installed in
   production), and only in debug mode (`debug` >= 1, otherwise 404). It accepts only POST
   requests, and returns `Cache-Control: no-store` and `X-Robots-Tag: noindex`. The messages and
@@ -664,8 +774,8 @@ as static files with the application stopped (`tests/test_app/bin/e2e.sh`).
 
 ## Limitations
 
-- Args are JSON values, so Elements that expect objects (e.g. entities or `DateTime`) need a story
-  template that builds them, or an Element that accepts arrays.
+- Args are JSON values, so Elements that expect objects (e.g. entities or `DateTime`) need an
+  [args processor](#args-processors) or a story template that builds them.
 - The request is a POST request to `/_storybook/render`, so Elements that depend on the current
   request (URL, query, session, logged-in user) render with that request.
 - A pre-rendered Storybook shows the stories with their own args only, with read-only controls
