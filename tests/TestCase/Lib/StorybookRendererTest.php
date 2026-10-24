@@ -1,10 +1,5 @@
 <?php
 
-App::uses('Controller', 'Controller');
-App::uses('StorybookArgs', 'Storybook.Lib');
-App::uses('StorybookRenderer', 'Storybook.Lib');
-App::uses('View', 'View');
-
 class StorybookRendererTest extends CakeTestCase
 {
     private View $View;
@@ -15,9 +10,7 @@ class StorybookRendererTest extends CakeTestCase
         $testApp = dirname(__DIR__, 2) . DS . 'test_app' . DS;
         App::build([
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
-            'Lib' => [$testApp . 'src' . DS . 'Lib' . DS],
         ], App::PREPEND);
-        App::uses('RecordingArgsProcessor', 'Lib');
         RecordingArgsProcessor::$instances = 0;
 
         $request = new CakeRequest('/', false);

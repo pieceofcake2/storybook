@@ -68,7 +68,7 @@ static build, which does not need the application (see
 
 ## Requirements
 
-- PHP 8.0+ and pieceofcake2/cakephp 2.12+
+- PHP 8.0+ and pieceofcake2/cakephp 2.13+
 - Node.js 20.19+, Storybook 10 and Vite 5 to 8
 - To publish a static Storybook: `playwright-core` and Chrome or Chromium (see
   [Publishing a Static Storybook](#static-build))
@@ -346,9 +346,6 @@ JSON args, and the processor turns them into objects:
 ```php
 <?php
 // src/Lib/Storybook/UserArgsProcessor.php
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-App::uses('User', 'Lib');
-
 class UserArgsProcessor implements StorybookArgsProcessor
 {
     public function __invoke(StorybookArgs $args): void
@@ -389,8 +386,6 @@ Register the processors in `Storybook.argsProcessors` (in `config/bootstrap.php`
 or with an array to scope them:
 
 ```php
-App::uses('UserArgsProcessor', 'Lib/Storybook');
-
 Configure::write('Storybook.argsProcessors', [
     // All the stories
     'UserArgsProcessor',
@@ -411,10 +406,10 @@ Configure::write('Storybook.argsProcessors', [
   names (a string or an array of strings), without wildcards.
 - The processors run in the order of the entries, so a processor can prepare the args for the
   next one (e.g. set default values that another one turns into objects).
-- The classes are loaded with `App::uses($class, 'Lib')` (`App::uses($class, 'Plugin.Lib')` for
-  `Plugin.ClassName`) unless they are already loaded or can be autoloaded: load the classes of
-  other packages with `App::uses()` before (as above), or use namespaced classes autoloaded by
-  Composer. They are instantiated without arguments, once per request.
+- The classes are found with `App::className($class, 'Lib')`, as the other classes named in the
+  configuration: a global or fully qualified class name loaded by Composer, e.g. with the classmap
+  of `src/` of pieceofcake2/app, which also loads `src/Lib/Storybook/UserArgsProcessor.php` and
+  `User` above, or `Plugin.ClassName`. They are instantiated without arguments, once per request.
 
 `StorybookArgs` holds the args and the story being rendered:
 

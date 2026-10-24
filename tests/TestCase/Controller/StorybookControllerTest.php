@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookController', 'Storybook.Controller');
-
 /**
  * @property StorybookController $controller
  */

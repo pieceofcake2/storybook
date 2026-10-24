@@ -65,7 +65,7 @@ Content-Type: application/json
 
 ## 要件
 
-- PHP 8.0 以上、pieceofcake2/cakephp 2.12 以上
+- PHP 8.0 以上、pieceofcake2/cakephp 2.13 以上
 - Node.js 20.19 以上、Storybook 10、Vite 5〜8
 - 静的な Storybook を公開するときは、`playwright-core` と Chrome か Chromium
   ([静的な Storybook の公開](#static-build) を参照)
@@ -338,9 +338,6 @@ args は JSON の値ですが、Element はオブジェクト (エンティテ�
 ```php
 <?php
 // src/Lib/Storybook/UserArgsProcessor.php
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-App::uses('User', 'Lib');
-
 class UserArgsProcessor implements StorybookArgsProcessor
 {
     public function __invoke(StorybookArgs $args): void
@@ -381,8 +378,6 @@ export default {
 配列で書きます。
 
 ```php
-App::uses('UserArgsProcessor', 'Lib/Storybook');
-
 Configure::write('Storybook.argsProcessors', [
     // すべてのストーリー
     'UserArgsProcessor',
@@ -403,9 +398,9 @@ Configure::write('Storybook.argsProcessors', [
   ワイルドカードは使えません。
 - プロセッサーは項目の順に実行します。前のプロセッサーが次のプロセッサーのために args を用意できます
   (既定値を入れておき、次のプロセッサーがオブジェクトにする、など)。
-- クラスは、読み込み済みでも自動読み込みもできないときに、`App::uses($class, 'Lib')`
-  (`Plugin.ClassName` なら `App::uses($class, 'Plugin.Lib')`) で読み込みます。ほかのパッケージのクラスは
-  (上の例のように) 先に `App::uses()` で読み込むか、Composer で自動読み込みする名前空間付きのクラスにします。
+- クラスは、設定で名前を指定するほかのクラスと同じく `App::className($class, 'Lib')` で探します。Composer が読み込む
+  グローバルなクラス名か完全修飾クラス名 (たとえば pieceofcake2/app の `src/` のクラスマップは、上の
+  `src/Lib/Storybook/UserArgsProcessor.php` と `User` も読み込みます)、または `Plugin.ClassName` で指定します。
   インスタンスは引数なしで、依頼ごとに 1 回作ります。
 
 `StorybookArgs` は、args と描画するストーリーの情報を持ちます。

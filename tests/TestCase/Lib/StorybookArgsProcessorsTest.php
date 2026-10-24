@@ -1,17 +1,10 @@
 <?php
 
-App::uses('StorybookArgs', 'Storybook.Lib');
-App::uses('StorybookArgsProcessors', 'Storybook.Lib');
-
 class StorybookArgsProcessorsTest extends CakeTestCase
 {
     public function setUp(): void
     {
         parent::setUp();
-        App::build([
-            'Lib' => [dirname(__DIR__, 2) . DS . 'test_app' . DS . 'src' . DS . 'Lib' . DS],
-        ], App::PREPEND);
-        App::uses('RecordingArgsProcessor', 'Lib');
         RecordingArgsProcessor::$instances = 0;
     }
 
@@ -119,23 +112,12 @@ class StorybookArgsProcessorsTest extends CakeTestCase
         }
     }
 
-    public function testAutoloadedProcessor(): void
+    public function testNamespacedProcessor(): void
     {
-        $autoload = function (string $class): void {
-            if ($class === 'TestApp\\Storybook\\NamespacedArgsProcessor') {
-                require dirname(__DIR__, 2) . DS . 'test_app' . DS . 'src' . DS . 'Storybook' . DS . 'NamespacedArgsProcessor.php';
-            }
-        };
-        spl_autoload_register($autoload);
-
-        try {
-            $this->assertSame(
-                ['TestApp\\Storybook\\NamespacedArgsProcessor'],
-                $this->process(['TestApp\\Storybook\\NamespacedArgsProcessor']),
-            );
-        } finally {
-            spl_autoload_unregister($autoload);
-        }
+        $this->assertSame(
+            ['TestApp\\Storybook\\NamespacedArgsProcessor'],
+            $this->process(['TestApp\\Storybook\\NamespacedArgsProcessor']),
+        );
     }
 
     /**

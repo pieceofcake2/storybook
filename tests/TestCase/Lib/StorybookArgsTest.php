@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookArgs', 'Storybook.Lib');
-
 class StorybookArgsTest extends CakeTestCase
 {
     public function testContext(): void
