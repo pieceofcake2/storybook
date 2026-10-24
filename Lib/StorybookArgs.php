@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookRenderer', 'Storybook.Lib');
-
 /**
  * Args of a render request, passed to the args processors (see StorybookArgsProcessor)
  *

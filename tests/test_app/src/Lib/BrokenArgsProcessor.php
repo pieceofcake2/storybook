@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-
 /**
  * Args processor for the PHPUnit tests: fails with the exception of the `throw` arg, or with a PHP
  * warning

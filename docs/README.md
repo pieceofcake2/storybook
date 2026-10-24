@@ -346,9 +346,6 @@ JSON args, and the processor turns them into objects:
 ```php
 <?php
 // src/Lib/Storybook/UserArgsProcessor.php
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-App::uses('User', 'Lib');
-
 class UserArgsProcessor implements StorybookArgsProcessor
 {
     public function __invoke(StorybookArgs $args): void
@@ -389,8 +386,6 @@ Register the processors in `Storybook.argsProcessors` (in `config/bootstrap.php`
 or with an array to scope them:
 
 ```php
-App::uses('UserArgsProcessor', 'Lib/Storybook');
-
 Configure::write('Storybook.argsProcessors', [
     // All the stories
     'UserArgsProcessor',
@@ -411,10 +406,11 @@ Configure::write('Storybook.argsProcessors', [
   names (a string or an array of strings), without wildcards.
 - The processors run in the order of the entries, so a processor can prepare the args for the
   next one (e.g. set default values that another one turns into objects).
-- The classes are loaded with `App::uses($class, 'Lib')` (`App::uses($class, 'Plugin.Lib')` for
-  `Plugin.ClassName`) unless they are already loaded or can be autoloaded: load the classes of
-  other packages with `App::uses()` before (as above), or use namespaced classes autoloaded by
-  Composer. They are instantiated without arguments, once per request.
+- The classes are loaded by Composer, e.g. with the classmap of `src/` of pieceofcake2/app, which
+  also finds `src/Lib/Storybook/UserArgsProcessor.php` and `User` above (the classes of the plugin,
+  such as `StorybookArgsProcessor`, are always loaded by Composer). A class that Composer does not
+  load is looked for in `Lib` (`Plugin.Lib` for `Plugin.ClassName`) with `App::import()`. They are
+  instantiated without arguments, once per request.
 
 `StorybookArgs` holds the args and the story being rendered:
 

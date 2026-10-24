@@ -1,8 +1,5 @@
 <?php
 
-App::uses('StorybookArgs', 'Storybook.Lib');
-App::uses('StorybookArgsProcessors', 'Storybook.Lib');
-
 class StorybookArgsProcessorsTest extends CakeTestCase
 {
     public function setUp(): void
@@ -11,7 +8,7 @@ class StorybookArgsProcessorsTest extends CakeTestCase
         App::build([
             'Lib' => [dirname(__DIR__, 2) . DS . 'test_app' . DS . 'src' . DS . 'Lib' . DS],
         ], App::PREPEND);
-        App::uses('RecordingArgsProcessor', 'Lib');
+        App::import('Lib', 'RecordingArgsProcessor');
         RecordingArgsProcessor::$instances = 0;
     }
 

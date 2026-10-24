@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-
 /**
  * Args processor of the test application, for some stories only: sets a default person (as an
  * array, which PersonArgsProcessor, registered after it, turns into a Person)

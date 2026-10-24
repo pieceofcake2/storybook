@@ -1,8 +1,5 @@
 <?php
 
-App::uses('Controller', 'Controller');
-App::uses('StorybookRenderer', 'Storybook.Lib');
-
 /**
  * Render endpoint of Storybook: `POST /_storybook/render/{storyId}`
  *

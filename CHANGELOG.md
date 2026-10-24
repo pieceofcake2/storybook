@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project
 adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- The plugin no longer calls `App::uses()`, deprecated in pieceofcake2/cakephp 2.13: Composer loads its classes
+  (`Controller/` and `Lib/` in the classmap). The args processors and the `AppController` that Composer does not load
+  are found in `Lib` and `Controller` with `App::import()`, as before. The tests also run with pieceofcake2/cakephp 2.12
+
 ## [1.3.0] - 2026-10-19
 
 ### Added
@@ -81,6 +89,7 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   (`excludeVitePlugins`), actions with `data-storybook-callbacks`, and the PHP code in Docs.
 - Static builds that work on the same origin as the application, under any path.
 
+[Unreleased]: https://github.com/pieceofcake2/storybook/compare/v1.3.0...HEAD
 [1.3.0]: https://github.com/pieceofcake2/storybook/compare/v1.2.2...v1.3.0
 [1.2.2]: https://github.com/pieceofcake2/storybook/compare/v1.2.1...v1.2.2
 [1.2.1]: https://github.com/pieceofcake2/storybook/compare/v1.2.0...v1.2.1

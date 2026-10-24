@@ -1,8 +1,5 @@
 <?php
 
-App::uses('StorybookArgs', 'Storybook.Lib');
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-
 /**
  * Args processors registered in `Storybook.argsProcessors`
  *
@@ -26,7 +23,7 @@ App::uses('StorybookArgsProcessor', 'Storybook.Lib');
  * - An entry without `stories`, `elements` and `templates` applies to all the render requests. With
  *   some of them, it applies to the requests that match any of them (exact story IDs and names).
  * - The processors run in the order of the entries.
- * - The classes are loaded with `App::uses($class, 'Lib')` (or `Plugin.Lib` for `Plugin.Class`)
+ * - The classes are loaded with `App::import('Lib', $class)` (from `Plugin.Lib` for `Plugin.Class`)
  *   if they cannot be autoloaded, and instantiated without arguments, once for all the entries
  *   of the same class.
  */
@@ -161,9 +158,9 @@ class StorybookArgsProcessors
             return $this->instances[$class];
         }
 
-        [$plugin, $name] = pluginSplit($class);
+        [, $name] = pluginSplit($class);
         if (!class_exists($name)) {
-            App::uses($name, $plugin === null ? 'Lib' : $plugin . '.Lib');
+            App::import('Lib', $class);
         }
         if (!class_exists($name)) {
             throw new CakeException(sprintf('Args processor class "%s" was not found.', $class));

@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
-
 /**
  * Args processor for the PHPUnit tests: appends its class name to the `processors` arg, and counts
  * its instances

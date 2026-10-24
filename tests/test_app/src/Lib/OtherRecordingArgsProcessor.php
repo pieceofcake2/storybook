@@ -1,6 +1,6 @@
 <?php
 
-App::uses('RecordingArgsProcessor', 'Lib');
+App::import('Lib', 'RecordingArgsProcessor');
 
 /**
  * Args processor for the PHPUnit tests (see RecordingArgsProcessor)

@@ -1,7 +1,6 @@
 <?php
 
-App::uses('Person', 'Lib');
-App::uses('StorybookArgsProcessor', 'Storybook.Lib');
+App::import('Lib', 'Person');
 
 /**
  * Args processor of the test application: builds Person objects from the `person` and `people`

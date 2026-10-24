@@ -1,6 +1,6 @@
 <?php
 
-App::uses('RecordingArgsProcessor', 'Lib');
+App::import('Lib', 'RecordingArgsProcessor');
 
 /**
  * Args processor of a plugin, for the PHPUnit tests (`TestStorybookPlugin.PluginArgsProcessor`)

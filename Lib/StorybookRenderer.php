@@ -1,9 +1,5 @@
 <?php
 
-App::uses('View', 'View');
-App::uses('StorybookArgs', 'Storybook.Lib');
-App::uses('StorybookArgsProcessors', 'Storybook.Lib');
-
 /**
  * Renders an Element (or a story template) for Storybook.
  *
@@ -69,7 +65,9 @@ class StorybookRenderer
     public static function viewSettings(): array
     {
         $settings = static::settings();
-        App::uses('AppController', 'Controller');
+        if (!class_exists('AppController')) {
+            App::import('Controller', 'App');
+        }
         $app = class_exists('AppController') ? get_class_vars('AppController') : [];
 
         return [

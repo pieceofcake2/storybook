@@ -1,7 +1,5 @@
 <?php
 
-App::uses('StorybookArgs', 'Storybook.Lib');
-
 /**
  * Args processor: changes the args of a render request before the Element (or the story
  * template) is rendered, e.g. to build objects (entities, value objects, dates) from the arrays of
@@ -11,8 +9,6 @@ App::uses('StorybookArgs', 'Storybook.Lib');
  * the server: the client only sends JSON args, never the name of a processor.
  *
  * ```php
- * App::uses('StorybookArgsProcessor', 'Storybook.Lib');
- *
  * class UserArgsProcessor implements StorybookArgsProcessor
  * {
  *     public function __invoke(StorybookArgs $args): void
