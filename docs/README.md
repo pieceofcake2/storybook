@@ -68,7 +68,7 @@ static build, which does not need the application (see
 
 ## Requirements
 
-- PHP 8.0+ and pieceofcake2/cakephp 2.12+
+- PHP 8.0+ and pieceofcake2/cakephp 2.13+
 - Node.js 20.19+, Storybook 10 and Vite 5 to 8
 - To publish a static Storybook: `playwright-core` and Chrome or Chromium (see
   [Publishing a Static Storybook](#static-build))
@@ -406,11 +406,10 @@ Configure::write('Storybook.argsProcessors', [
   names (a string or an array of strings), without wildcards.
 - The processors run in the order of the entries, so a processor can prepare the args for the
   next one (e.g. set default values that another one turns into objects).
-- The classes are loaded by Composer, e.g. with the classmap of `src/` of pieceofcake2/app, which
-  also finds `src/Lib/Storybook/UserArgsProcessor.php` and `User` above (the classes of the plugin,
-  such as `StorybookArgsProcessor`, are always loaded by Composer). A class that Composer does not
-  load is looked for in `Lib` (`Plugin.Lib` for `Plugin.ClassName`) with `App::import()`. They are
-  instantiated without arguments, once per request.
+- The classes are found with `App::className($class, 'Lib')`, as the other classes named in the
+  configuration: a global or fully qualified class name loaded by Composer, e.g. with the classmap
+  of `src/` of pieceofcake2/app, which also loads `src/Lib/Storybook/UserArgsProcessor.php` and
+  `User` above, or `Plugin.ClassName`. They are instantiated without arguments, once per request.
 
 `StorybookArgs` holds the args and the story being rendered:
 

@@ -1,7 +1,5 @@
 <?php
 
-App::import('Lib', 'Person');
-
 /**
  * Args processor of the test application: builds Person objects from the `person` and `people`
  * args

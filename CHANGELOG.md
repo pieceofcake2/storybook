@@ -9,9 +9,11 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Changed
 
+- Requires pieceofcake2/cakephp 2.13
 - The plugin no longer calls `App::uses()`, deprecated in pieceofcake2/cakephp 2.13: Composer loads its classes
-  (`Controller/` and `Lib/` in the classmap). The args processors and the `AppController` that Composer does not load
-  are found in `Lib` and `Controller` with `App::import()`, as before. The tests also run with pieceofcake2/cakephp 2.12
+  (`Controller/` and `Lib/` in the classmap), and the args processors of `Storybook.argsProcessors` and the
+  `AppController` of the application are found with `App::className()`, as the other classes named in the
+  configuration
 
 ## [1.3.0] - 2026-10-19
 

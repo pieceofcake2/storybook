@@ -65,8 +65,8 @@ class StorybookRenderer
     public static function viewSettings(): array
     {
         $settings = static::settings();
-        // App::import() finds the AppController of an application whose classes Composer does not load
-        $app = class_exists('AppController') || App::import('Controller', 'App') ? get_class_vars('AppController') : [];
+        $appController = App::className('AppController', 'Controller');
+        $app = $appController !== null ? get_class_vars($appController) : [];
 
         return [
             'viewClass' => (string)($settings['viewClass'] ?? $app['viewClass'] ?? 'View'),

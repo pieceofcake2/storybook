@@ -6,7 +6,7 @@ use StorybookArgs;
 use StorybookArgsProcessor;
 
 /**
- * Namespaced args processor, loaded by an autoloader (e.g. of Composer), for the PHPUnit tests
+ * Namespaced args processor, for the PHPUnit tests
  */
 class NamespacedArgsProcessor implements StorybookArgsProcessor
 {

@@ -10,9 +10,7 @@ class StorybookRendererTest extends CakeTestCase
         $testApp = dirname(__DIR__, 2) . DS . 'test_app' . DS;
         App::build([
             'View' => [$testApp . 'src' . DS . 'View' . DS, $testApp . 'templates' . DS],
-            'Lib' => [$testApp . 'src' . DS . 'Lib' . DS],
         ], App::PREPEND);
-        App::import('Lib', 'RecordingArgsProcessor');
         RecordingArgsProcessor::$instances = 0;
 
         $request = new CakeRequest('/', false);

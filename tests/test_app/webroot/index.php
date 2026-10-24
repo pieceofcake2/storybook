@@ -32,7 +32,7 @@ foreach (['cache/models', 'cache/persistent', 'cache/views', 'logs'] as $dir) {
 define('LOGS', ROOT . DS . 'tmp' . DS . 'logs' . DS);
 
 require_once VENDORS . 'autoload.php';
-require_once InstalledVersions::getInstallPath('pieceofcake2/cakephp') . DS . 'src' . DS . 'Cake' . DS . 'bootstrap.php';
+require_once InstalledVersions::getInstallPath('pieceofcake2/cakephp') . DS . 'src' . DS . 'bootstrap.php';
 
 $dispatcher = new Dispatcher();
 $dispatcher->dispatch(
