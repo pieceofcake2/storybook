@@ -65,10 +65,8 @@ class StorybookRenderer
     public static function viewSettings(): array
     {
         $settings = static::settings();
-        if (!class_exists('AppController')) {
-            App::import('Controller', 'App');
-        }
-        $app = class_exists('AppController') ? get_class_vars('AppController') : [];
+        // App::import() finds the AppController of an application whose classes Composer does not load
+        $app = class_exists('AppController') || App::import('Controller', 'App') ? get_class_vars('AppController') : [];
 
         return [
             'viewClass' => (string)($settings['viewClass'] ?? $app['viewClass'] ?? 'View'),
